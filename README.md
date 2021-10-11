@@ -19,8 +19,9 @@ Then run the development server:
 yarn dev
 ```
 
-To interact with the Celo blockchain you will need a Celo wallet. For simplicity of dev development we recommend the Celo Extension Wallet for Chome (works on Brave too)
+To interact with the Celo blockchain you will need a Celo wallet. For simplicity of dev development we recommend the Celo Extension Wallet for Chome (works on Brave too).
+It's recommended to use the Alfajores Tes Network, use can use the [faucet](https://celo.org/developers/faucet) to get some test CELO and stables.
 
 ## TODO
 
-Right now the webapp just displays a button to connect Celo wallet
+Right now the webapp just displays a button to connect Celo wallet, and fetches the address and balances of the connected wallet.
