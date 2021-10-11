@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity >=0.7.0 <0.9.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -11,8 +12,9 @@ contract Loan is ReentrancyGuard {
 
     bytes4 private constant SELECTOR = bytes4(keccak256(bytes('transfer(address,uint256)')));
     
-    address payable public borrower; // Assuming 1 borrower for now
-    address payable public lender; // Assuming 1 lender for now TODO support multiple lenders
+    address public borrower; // Assuming 1 borrower for now
+    address public lender; // Assuming 1 lender for now TODO support multiple lenders
+    address public loanContract;
     address token; // The address of the token to use (eg cUSD = 0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1)
     // Loan level amounts
     uint public amountRequested = 0;
@@ -20,8 +22,8 @@ contract Loan is ReentrancyGuard {
     uint public amountRepaid = 0;
     
     // Individual level amount - will need to update with multiple lenders and borrowers
-    uint public amountLenderWithdraw = 0;
-    uint public amountBorrowerWithdraw = 0;
+    uint public amountLenderHasWithdraw = 0;
+    uint public amountBorrowerHasWithdraw = 0;
     
     //Events
     event LentToLoan(address addr, uint amount);
@@ -48,15 +50,17 @@ contract Loan is ReentrancyGuard {
      * Lender transfers ERC20 token to the contract, we store how much they lent
      **/
     function lend(uint amount) payable public nonReentrant {
-        // Don't allow borrowers to lend, or allow overfunding
-        require(msg.sender != borrower);
-        require(amount <= amountLeftToFund());
+        require(msg.sender != borrower, "Borrower can't lend to their own loan");
+        require(amount <= amountLeftToFund(), "Lend amount exceeds amount left to fund");
         
         // For 1 lender we require the amount to exactly equal the requested amount, we can remove this when we have multiple lenders
-        require(amount == amountLeftToFund());
+        require(amount == amountLeftToFund(), "Lend amount much equal amount left to fund");
         
         amountRaised += amount;
-        _safeTransfer(address(this), amount);
+        lender = msg.sender;
+        
+        // TODO evaluate if this method is safe
+        ERC20(token).transferFrom(msg.sender, address(this), amount);
         emit LentToLoan(msg.sender, amount);
         
         // TODO for multiple lenders we need to check if it's fully funded, for now we know it is
@@ -65,22 +69,22 @@ contract Loan is ReentrancyGuard {
     
     function borrowerWithdraw() public nonReentrant {
          // Only borrowers can withdraw, and only in the funded state
-        require(msg.sender == borrower);
-        require(amountRaised > 0);
+        require(msg.sender == borrower, "Only the borrower can withdraw");
+        require(amountRaised > 0, "Amount raised must be greater than 0");
         
         // TODO for multiple borrowers we have to keep track of each one
-        require(amountBorrowerWithdraw < amountRaised);
+        require(amountBorrowerHasWithdraw < amountRaised, "Can't withdraw more than the amount raised");
         
-        amountBorrowerWithdraw += amountRaised;
-        _safeTransfer(msg.sender, amountRaised);
+        amountBorrowerHasWithdraw += amountRaised;
+        ERC20(token).transfer(msg.sender, amountRaised);
         emit BorrowerWithdrew(msg.sender, amountRaised);
     }
     
     function borrowerRepay(uint amount) payable public nonReentrant {
-        require(msg.sender == borrower);
+        require(msg.sender == borrower, "Only the borrower can repay");
         
         amountRepaid += amount;
-        _safeTransfer(address(this), amount);
+        ERC20(token).transferFrom(msg.sender, address(this), amount);
         emit BorrowerRepaid(msg.sender, amount);
         if (amountLeftToRepay() <= 0) {
             emit LoanRepaid();
@@ -88,13 +92,13 @@ contract Loan is ReentrancyGuard {
     }
     
     function lenderWithdraw() public nonReentrant {
-        require(msg.sender == lender);
-        uint amountToWithdraw = amountRepaid - amountLenderWithdraw;
-        require(amountToWithdraw > 0);
+        require(msg.sender == lender, "Only the lender can withdraw");
+        uint amountToWithdraw = amountRepaid - amountLenderHasWithdraw;
+        require(amountToWithdraw > 0, "Amount to withdraw must be greater than 0");
         
-        _safeTransfer(msg.sender, amountToWithdraw);
+        ERC20(token).transfer(msg.sender, amountToWithdraw);
         
-        amountLenderWithdraw += amountToWithdraw;
+        amountLenderHasWithdraw += amountToWithdraw;
         emit LenderWithrew(msg.sender, amountToWithdraw);
     }
     
@@ -106,13 +110,5 @@ contract Loan is ReentrancyGuard {
     
     function amountLeftToRepay() public view returns (uint) {
         return amountRequested - amountRepaid;
-    }
-    
-    
-    /* Private functions */
-    
-    function _safeTransfer( address to, uint value) private {
-        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(SELECTOR, to, value));
-        require(success && (data.length == 0 || abi.decode(data, (bool))), 'Loan: TRANSFER_FAILED');
     }
 }

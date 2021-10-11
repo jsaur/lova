@@ -25,3 +25,5 @@ It's recommended to use the Alfajores Tes Network, use can use the [faucet](http
 ## TODO
 
 Right now the webapp just displays a button to connect Celo wallet, and fetches the address and balances of the connected wallet.
+Right not I'm manually deploying the Loan contract to Alfajores, and pasting the compiled ABI into the build folder,
+eventually I want it so that buidling and deploying all happens from this repo.
