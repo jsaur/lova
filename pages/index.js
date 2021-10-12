@@ -2,16 +2,16 @@ import React, { useEffect, useState } from 'react';
 import { useContractKit } from '@celo-tools/use-contractkit';
 import { ContractKitProvider } from '@celo-tools/use-contractkit';
 import '@celo-tools/use-contractkit/lib/styles.css';
-import LOANABI from '../build/contracts/Loan.json'; // Manually linking ABI for now
-import ERC20ABI from '../build/contracts/ERC20.json'; // Manually linking ABI for now
+import loanJson from '../truffle/build/contracts/Loan.json'; // Manually linking ABI for now
+import erc20Json from '../truffle/build/contracts/ERC20.json'; // Manually linking ABI for now
 
 function App () {
   const { connect, network, getConnectedKit} = useContractKit();
   let [account, setAccount] = useState([]);
   let [loan, setLoan] = useState([]);
   const ERC20_DECIMALS = 18;
-  const loanAddress = '0xfda9A9cba042462709E2883018c6Fe3FD34AeE90'; // Hard-coding alfajores contrcat address of now - eventually make this config
-  const cusdAddress = '0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1'; // Hard-coding cusd - eventually allow any token
+  const loanAddress = '0x6f42BfAe79aefA1f99553770ACd24A4A037039c1'; // Hard-coding local contract - eventually make this config
+  const cusdAddress = '0x10A736A7b223f1FE1050264249d1aBb975741E75'; // Hard-coding cusd - eventually allow any token
   
   let kit;
   let loanContract;
@@ -21,10 +21,11 @@ function App () {
   // TODO figure out how to preserve these values through button clicks
   async function initLoad() {
     kit = await getConnectedKit();
-    loanContract = new kit.web3.eth.Contract(LOANABI, loanAddress);
-    cusdContract = new kit.web3.eth.Contract(ERC20ABI, cusdAddress);
+    loanContract = new kit.web3.eth.Contract(loanJson.abi, loanAddress);
+    cusdContract = new kit.web3.eth.Contract(erc20Json.abi, cusdAddress);
     const web3Accounts = await kit.web3.eth.getAccounts();
     kit.defaultAccount = web3Accounts[0];
+    console.log(network);
   }
 
   async function getAccountSummary() {
@@ -67,7 +68,7 @@ function App () {
   async function lenderLend() {
     await initLoad();
     // Hard-coding to lend 4 for now
-    const txObject = await loanContract.methods.lend(4); 
+    const txObject = await loanContract.methods.lend(100); 
     await kit.sendTransactionObject(txObject, { from: kit.defaultAccount })
   }
 
@@ -80,7 +81,7 @@ function App () {
   async function borrowerRepay() {
     await initLoad();
     // Hard-coding to repay 2 for now
-    const txObject = await loanContract.methods.borrowerRepay(2); 
+    const txObject = await loanContract.methods.borrowerRepay(50); 
     await kit.sendTransactionObject(txObject, { from: kit.defaultAccount })
   }
 
@@ -98,11 +99,48 @@ function App () {
     getContractSummary()
   }, [])
 
+  async function send(){
+    await initLoad();
+    // 12. Specify recipient Address
+    let anAddress = '0x914c756d7ed05333Ce72fb7049747f2c0b28A326'
+
+    // 13. Specify an amount to send
+    let amount = 100
+
+    // 14. Get the token contract wrappers    
+    //let goldtoken = await kit.contracts.getGoldToken()
+    let stabletoken = await kit.contracts.getStableToken()
+    
+    // 15. Transfer CELO and cUSD from your account to anAddress
+    // Specify cUSD as the feeCurrency when sending cUSD
+    //let celotx = await goldtoken.transfer(anAddress, amount).send({from: account.address})
+    let cUSDtx = await stabletoken.transfer(anAddress, amount).send({from: account.address, feeCurrency: stabletoken.address})
+    
+    // 16. Wait for the transactions to be processed
+    //let celoReceipt = await celotx.waitReceipt()
+    let cUSDReceipt = await cUSDtx.waitReceipt()
+    
+    // 17. Print receipts
+    //console.log('CELO Transaction receipt: %o', celoReceipt)
+    console.log('cUSD Transaction receipt: %o', cUSDReceipt)
+    
+    // 18. Get your new balances
+    //let celoBalance = await goldtoken.balanceOf(account.address)
+    let cUSDBalance = await stabletoken.balanceOf(account.address)
+    
+    // 19. Print new balance
+    //console.log(`Your new account CELO balance: ${celoBalance.toString()}`)
+    console.log(`Your new account cUSD balance: ${cUSDBalance.toString()}`)
+}
+
   return (
     <main>
       <h1>Lova</h1>
       <div>
         <button onClick={connect}>Click here to connect your wallet</button>
+      </div>
+      <div>
+        <button onClick={send}>Click here send</button>
       </div>
       <div>----</div>
       <div>
