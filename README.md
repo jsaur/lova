@@ -34,19 +34,20 @@ b) Metamask: because it interacts with celo-devchain as if it were Eth based
 
 Here are the steps to get things set up
 
+Installs:
 ```bash
 cd truffle
 npm install -g truffle
 npm install --save-dev celo-devchain
 ```
 
-Then start the celo blockchain locally
+Then start the celo blockchain locally:
 ```bash
 export NO_SYNCCHECK=true
 npx celo-devchain --port 8545
 ```
 
-In a new tab run truffle migration to deploy the contracts
+In a new tab run truffle migration to deploy the contracts (from the truffle folder):
 ```bash
 truffle migrate --network test
 ```
@@ -60,7 +61,7 @@ celocli transfer:dollars --from 0x5409ED021D9299bf6814279A6A1411A7e866A631 --to 
 ```
 
 To figure out the address of, for example cUSD, use network:contracts, eg 0x10A736A7b223f1FE1050264249d1aBb975741E75
-Add tokens
+Add tokens:
 ```bash
 celocli network:contracts
 ```
