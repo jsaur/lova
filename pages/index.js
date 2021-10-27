@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useContractKit } from '@celo-tools/use-contractkit';
 import { ContractKitProvider } from '@celo-tools/use-contractkit';
 import '@celo-tools/use-contractkit/lib/styles.css';
-import loanJson from '../truffle/build/contracts/Loan.json'; // Manually linking ABI for now
+import lovaJson from '../truffle/build/contracts/Lova.json'; // Manually linking ABI for now
 import erc20Json from '../truffle/build/contracts/ERC20.json'; // Manually linking ABI for now
 
 function App () {
@@ -13,23 +13,21 @@ function App () {
 
   // TODO Move these to configs
   // Alfajores
-  const loanAddress = '0x88c6B693B2A79B6f8F55057c8955ce4B32746450';
+  const lovaAddress = '0x3e9D2fa213fC79607fC89B01E308eD74E7Fa3B95';
   const cusdAddress = '0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1';
-  const borrowerAddress = '0x50D3E37AfC58F8eb31a115a9c1E8AA86782e1cf8'
   // Local
-  // const loanAddress = '0x6f42BfAe79aefA1f99553770ACd24A4A037039c1';
+  // const lovaAddress = '0x6f42BfAe79aefA1f99553770ACd24A4A037039c1';
   // const cusdAddress = '0x10A736A7b223f1FE1050264249d1aBb975741E75';
-  // const borrowerAddress = '0x914c756d7ed05333Ce72fb7049747f2c0b28A326'
 
   let kit;
-  let loanContract;
+  let lovaContract;
   let cusdContract;
 
   // TODO figure out how to run this before the others
   // TODO figure out how to preserve these values through button clicks
   async function initLoad() {
     kit = await getConnectedKit();
-    loanContract = new kit.web3.eth.Contract(loanJson.abi, loanAddress);
+    lovaContract = new kit.web3.eth.Contract(lovaJson.abi, lovaAddress);
     cusdContract = new kit.web3.eth.Contract(erc20Json.abi, cusdAddress);
     const web3Accounts = await kit.web3.eth.getAccounts();
     kit.defaultAccount = web3Accounts[0];
@@ -50,34 +48,46 @@ function App () {
   }
 
   async function getContractSummary() {
+    const loanId = 0;
+
     await initLoad();
-    const amountRequested = await loanContract.methods.amountRequested().call();
-    const amountRaised = await loanContract.methods.amountRaised().call();
-    const amountBorrowerHasWithdraw = await loanContract.methods.amountBorrowerHasWithdraw().call();
-    const amountRepaid = await loanContract.methods.amountRepaid().call();
-    const amountLenderHasWithdraw = await loanContract.methods.amountLenderHasWithdraw().call();
-    loan = {
-      amountRequested,
-      amountRaised,
-      amountBorrowerHasWithdraw,
-      amountRepaid,
-      amountLenderHasWithdraw,
-    };
+    const loan = await lovaContract.methods.loanInfo(loanId).call();
+    console.log(loan);
     setLoan(loan);
   }
 
   // TODO figure out a better method to keep around kit and contract info without doing initLoad each time
+  // TODO right now hard-coding all values - eventually these should come from inputs
 
   async function approve() {
+    const approveLimit = 1000000;
     await initLoad();
-    // Hard-coding to 1 million for now
-    const txObject = await cusdContract.methods.approve(loanAddress, 1000000); 
-    await kit.sendTransactionObject(txObject, { from: kit.defaultAccount })
+
+    const txObject = await cusdContract.methods.approve(lovaAddress, approveLimit); 
+    let tx = await kit.sendTransactionObject(txObject, { from: kit.defaultAccount });
+    let receipt = await tx.waitReceipt();
+    console.log(receipt);
   }
-  async function lenderLend() {
+
+  async function mint() {
+    const borrower = "0x50D3E37AfC58F8eb31a115a9c1E8AA86782e1cf8";
+    const token = cusdAddress;
+    const amountRequested = 100;
+    const numShares = 25;
+
     await initLoad();
-    // Hard-coding to lend 4 for now
-    const txObject = await loanContract.methods.lend(100); 
+    const txObject = await lovaContract.methods.mint(borrower, token, amountRequested, numShares); 
+    let tx = await kit.sendTransactionObject(txObject, { from: kit.defaultAccount });
+    let receipt = await tx.waitReceipt();
+    console.log(receipt);
+  }
+
+  async function lend() {
+    const loanId = 0;
+    const numShares = 3;
+
+    await initLoad();
+    const txObject = await lovaContract.methods.lend(loanId, numShares); 
     let tx = await kit.sendTransactionObject(txObject, { from: kit.defaultAccount });
     let receipt = await tx.waitReceipt();
     console.log(receipt);
@@ -85,9 +95,11 @@ function App () {
     await getContractSummary();
   }
 
-  async function borrowerWithdraw() {
+  async function borrow() {
+    const loanId = 0;
+
     await initLoad();
-    const txObject = await loanContract.methods.borrowerWithdraw(); 
+    const txObject = await lovaContract.methods.borrow(loanId); 
     let tx = await kit.sendTransactionObject(txObject, { from: kit.defaultAccount });
     let receipt = await tx.waitReceipt();
     console.log(receipt);
@@ -95,10 +107,12 @@ function App () {
     await getContractSummary();
   }
 
-  async function borrowerRepay() {
+  async function repay() {
+    const loanId = 0;
+    const repayAmount = 50;
+
     await initLoad();
-    // Hard-coding to repay 2 for now
-    const txObject = await loanContract.methods.borrowerRepay(50); 
+    const txObject = await lovaContract.methods.repay(loanId, repayAmount); 
     let tx = await kit.sendTransactionObject(txObject, { from: kit.defaultAccount });
     let receipt = await tx.waitReceipt();
     console.log(receipt);
@@ -106,9 +120,13 @@ function App () {
     await getContractSummary();
   }
 
-  async function lenderWithdraw() {
+  async function burn() {
+    const loanId = 0;
+    const account = kit.defaultAccount;
+    const numShares = 4;
+
     await initLoad();
-    const txObject = await loanContract.methods.lenderWithdraw(); 
+    const txObject = await lovaContract.methods.burn(account, loanId, numShares); 
     let tx = await kit.sendTransactionObject(txObject, { from: kit.defaultAccount });
     let receipt = await tx.waitReceipt();
     console.log(receipt);
@@ -140,21 +158,24 @@ function App () {
       </div>
       <div>----</div>
       <div>
-        <div>Amount Requested: {loan.amountRequested}</div>
-        <div>Amount Raised: {loan.amountRaised}</div>
-        <div>Amount Borrower Has Withdrawn: {loan.amountBorrowerHasWithdraw}</div>
+        <div>Borrower: {loan.borrower}</div>
+        <div>Token: {loan.token}</div>
+        <div>Num Shares: {loan.numShares}</div>
+        <div>Share Price: {loan.sharePrice}</div>
         <div>Amount Repaid: {loan.amountRepaid}</div>
-        <div>Amount Lender Has Withdrawn: {loan.amountLenderHasWithdraw}</div>
+        <div>Current State: {loan.currentState}</div>
         <div></div>
         <div></div>
       </div>
       <div>----</div>
       <div>
-        <button onClick={approve}>Approve spend limit</button>
-        <button onClick={lenderLend}>Lender lend</button>
-        <button onClick={borrowerWithdraw}>Borrower withdraw</button>
-        <button onClick={borrowerRepay}>Borrwer repay</button>
-        <button onClick={lenderWithdraw}>Lender withdraw</button>
+        <div><button onClick={mint}>Borrower: Mint loan</button></div>
+        <div><button onClick={approve}>Lender: Approve spend limit</button></div>
+        <div><button onClick={lend}>Lender: lend</button></div>
+        <div><button onClick={borrow}>Borrower: borrow</button></div>
+        <div><button onClick={approve}>Borrower: Approve spend limit</button></div>
+        <div><button onClick={repay}>Borrower: repay</button></div>
+        <div><button onClick={burn}>Lender: burn and withdraw</button></div>
       </div>
     </main>
   )
