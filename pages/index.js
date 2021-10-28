@@ -85,7 +85,7 @@ function App () {
 
     const borrower = kit.defaultAccount;
     const token = cusdAddress;
-    const amountRequested = (5 * (10**ERC20_DECIMALS)).toString();
+    const amountRequested = (5 * 10**ERC20_DECIMALS).toString();
     const numShares = 5;
 
     const txObject = await lovaContract.methods.mint(borrower, token, amountRequested, numShares); 
@@ -119,7 +119,7 @@ function App () {
   }
 
   async function repay(loanId) {
-    const repayAmount = (2.5 * 10^ERC20_DECIMALS).toString();
+    const repayAmount = (2.5 * 10**ERC20_DECIMALS).toString();
 
     await initLoad();
     const txObject = await lovaContract.methods.repay(loanId, repayAmount); 

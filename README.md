@@ -24,6 +24,40 @@ Then run the development server:
 yarn dev
 ```
 
+## Alfajores Testnet
+
+We want to be able to test on multiple devices, including mobile, so using the Testnet is better than a local celo-devchain on a single machine.
+
+To work with Alfajores you need a compatible wallet, for desktop development the 2 options are Celo Extension Wallet and Metamask.
+I was unable to get CEW to work with Alfajores, firstly it suggests super high gas costs, and even if I adjust lower the transaction still never gets processed
+
+So I recommend using metamask, even though it doesn't support all the Celo features like paying for transactions with cUSD.
+Add a custom RPC:
+```
+Network Name: Celo (Alfajores Testnet)
+New RPC URL: https://alfajores-forno.celo-testnet.org
+Chain ID: 44787
+Currency Symbol (Optional): CELO
+Block Explorer URL (Optional): https://alfajores-blockscout.celo-testnet.org
+```
+
+In order to use the Alfajores Test Network, you'll need some test Celo and cUSD from the [faucet](https://celo.org/developers/faucet).
+
+## Demo
+
+In order to see the full flow, you need to run through the following steps:
+1. Create first account in Metamask, get test Celo and test cUSD from faucet. This will be the "Lender account"
+2. Click "Approve spend limit" which grants the lova contract the ability to spend up to 100$ from your account. Note: for each action it requires approval in metamask
+3. Create a second account in Metamask, and get test Celo. This will be the "Borrower account"
+4. Click "Approve spend limit" on that account too
+5. As the borrower click "Create and mint 5$ loan", this value is hard-coded for now, but we should make it an input. This creates a loan.
+6. Switch to the lender account, and click "lend". This is hard-coded to automatically lend the full $5 (we can make an input)
+7. Switch to borrower account, and click "borrow". This withdraws the loan amount from the contract and into your balance.
+8. As borrower submit your first repayment by clicking "repay". This is hard-coded to repay $2.50
+9. Click it a second time to fully repay the loan
+10. Switch to the lender accound and click burn and withdraw - with will burn all your outstanding shares, and send you the cUSD balance.
+
+
 ## Truffle
 
 You can use truffle and the celo-devchain to deploy contracts locally.
@@ -65,25 +99,6 @@ Add tokens:
 ```bash
 celocli network:contracts
 ```
-
-## Alfajores Testnet
-
-We want to be able to test on multiple devices, including mobile, so using the Testnet is better than a local celo-devchain on a single machine.
-
-To work with Alfajores you need a compatible wallet, for desktop development the 2 options are Celo Extension Wallet and Metamask.
-I was unable to get CEW to work with Alfajores, firstly it suggests super high gas costs, and even if I adjust lower the transaction still never gets processed
-
-So I recommend using metamask, even though it doesn't support all the Celo features like paying for transactions with cUSD.
-Add a custom RPC:
-```
-Network Name: Celo (Alfajores Testnet)
-New RPC URL: https://alfajores-forno.celo-testnet.org
-Chain ID: 44787
-Currency Symbol (Optional): CELO
-Block Explorer URL (Optional): https://alfajores-blockscout.celo-testnet.org
-```
-
-In order to use the Alfajores Test Network, you'll need some test Celo and cUSD from the [faucet](https://celo.org/developers/faucet).
 
 ## Error to watch out for
 
