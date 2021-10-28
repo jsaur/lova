@@ -21,7 +21,7 @@ contract Lova is ERC1155, ERC1155Receiver, ERC1155Holder, Ownable {
     using Counters for Counters.Counter;
 
     // Variables
-    Counters.Counter private _loanIdCounter;
+    Counters.Counter _loanIdCounter;
     mapping(uint256 => LoanInfo) _loanInfo;
     enum State {RAISING, FUNDED, REPAYING, REPAID} // TODO could add expired in raising and/or defaulted
     struct LoanInfo {
@@ -91,7 +91,7 @@ contract Lova is ERC1155, ERC1155Receiver, ERC1155Holder, Ownable {
         // Checks
         require(numShares > 0, "Must lend more than 0");
         require(msg.sender != _loanInfo[loanId].borrower, "Borrower can't lend to their own loan");
-        require(this.sharesLeft(loanId) <= numShares, "Not enough shares left");
+        require(numShares <= this.sharesLeft(loanId), "Not enough shares left");
         
         // Effects
         uint256 lendAmount = numShares * _loanInfo[loanId].sharePrice;
@@ -174,11 +174,21 @@ contract Lova is ERC1155, ERC1155Receiver, ERC1155Holder, Ownable {
     /**
      * Convinence function to get the number of shares left to fund for a loan (ie still owned by the contract)
      */
-    function sharesLeft(uint256 loanId) public view virtual returns (uint256) {
+    function sharesLeft(uint256 loanId) public view returns (uint256) {
         return this.balanceOf(address(this), loanId);
     }
     
-    function loanInfo(uint256 loanId) public view virtual returns (LoanInfo memory) {
+    /**
+     * Get loan info for an individual loan id
+     */
+    function loanInfo(uint256 loanId) public view returns (LoanInfo memory) {
         return _loanInfo[loanId];
+    }
+    
+    /**
+     * Loans increment sequentially from 0
+     */
+    function loanCount() public view returns (uint256) {
+        return _loanIdCounter.current();
     }
 }

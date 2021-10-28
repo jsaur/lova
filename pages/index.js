@@ -8,12 +8,12 @@ import erc20Json from '../truffle/build/contracts/ERC20.json'; // Manually linki
 function App () {
   const { connect, network, getConnectedKit} = useContractKit();
   let [account, setAccount] = useState([]);
-  let [loan, setLoan] = useState([]);
+  let [loans, setLoans] = useState([]);
   const ERC20_DECIMALS = 18;
 
   // TODO Move these to configs
   // Alfajores
-  const lovaAddress = '0x3e9D2fa213fC79607fC89B01E308eD74E7Fa3B95';
+  const lovaAddress = '0x498aC6614C069EECa0B08dFB4F883356EA7017c7';
   const cusdAddress = '0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1';
   // Local
   // const lovaAddress = '0x6f42BfAe79aefA1f99553770ACd24A4A037039c1';
@@ -47,13 +47,20 @@ function App () {
     setAccount(account);
   }
 
-  async function getContractSummary() {
-    const loanId = 0;
-
+  // TODO there are optimiztions here, eg just get info and update a specific loan, but for now we refetch everything
+  async function getLoans() {
     await initLoad();
-    const loan = await lovaContract.methods.loanInfo(loanId).call();
-    console.log(loan);
-    setLoan(loan);
+
+    let loans = [];
+    const loanCount = await lovaContract.methods.loanCount().call();
+    for (let loanId = 0; loanId < loanCount; loanId++) {
+      const loanInfo = await lovaContract.methods.loanInfo(loanId).call();
+      const sharesLeft = await lovaContract.methods.sharesLeft(loanId).call();
+      const loan = { loanId, ...loanInfo, sharesLeft };
+      console.log(loan);
+      loans.push(loan);
+    }
+    setLoans(loans);
   }
 
   // TODO figure out a better method to keep around kit and contract info without doing initLoad each time
@@ -73,18 +80,20 @@ function App () {
     const borrower = "0x50D3E37AfC58F8eb31a115a9c1E8AA86782e1cf8";
     const token = cusdAddress;
     const amountRequested = 100;
-    const numShares = 25;
+    const numShares = 4;
 
     await initLoad();
     const txObject = await lovaContract.methods.mint(borrower, token, amountRequested, numShares); 
     let tx = await kit.sendTransactionObject(txObject, { from: kit.defaultAccount });
     let receipt = await tx.waitReceipt();
     console.log(receipt);
+    await getAccountSummary();
+    await getLoans();
   }
 
   async function lend() {
     const loanId = 0;
-    const numShares = 3;
+    const numShares = 22;
 
     await initLoad();
     const txObject = await lovaContract.methods.lend(loanId, numShares); 
@@ -92,7 +101,7 @@ function App () {
     let receipt = await tx.waitReceipt();
     console.log(receipt);
     await getAccountSummary();
-    await getContractSummary();
+    await getLoans();
   }
 
   async function borrow() {
@@ -104,7 +113,7 @@ function App () {
     let receipt = await tx.waitReceipt();
     console.log(receipt);
     await getAccountSummary();
-    await getContractSummary();
+    await getLoans();
   }
 
   async function repay() {
@@ -117,21 +126,21 @@ function App () {
     let receipt = await tx.waitReceipt();
     console.log(receipt);
     await getAccountSummary();
-    await getContractSummary();
+    await getLoans();
   }
 
   async function burn() {
+    await initLoad();
     const loanId = 0;
     const account = kit.defaultAccount;
     const numShares = 4;
 
-    await initLoad();
     const txObject = await lovaContract.methods.burn(account, loanId, numShares); 
     let tx = await kit.sendTransactionObject(txObject, { from: kit.defaultAccount });
     let receipt = await tx.waitReceipt();
     console.log(receipt);
     await getAccountSummary();
-    await getContractSummary();
+    await getLoans();
   }
 
   useEffect(() => {
@@ -139,16 +148,17 @@ function App () {
   }, [])
 
   useEffect(() => {
-    getContractSummary()
+    getLoans()
   }, [])
 
   return (
     <main>
       <h1>Lova</h1>
       <div>
-        <button onClick={connect}>Click here to connect your wallet</button>
+        <div><button onClick={connect}>Click here to connect your wallet</button></div>
+        <div><button onClick={getAccountSummary}>Refresh Account</button></div>
       </div>
-      <div>----</div>
+      <div>-- Wallet Info --</div>
       <div>
         <div>Network: {network.name}</div>
         <div>Address: {account.address}</div>
@@ -156,18 +166,7 @@ function App () {
         <div>cUSD: {account.cUSD}</div>
         <div>cEUR: {account.cEUR}</div>
       </div>
-      <div>----</div>
-      <div>
-        <div>Borrower: {loan.borrower}</div>
-        <div>Token: {loan.token}</div>
-        <div>Num Shares: {loan.numShares}</div>
-        <div>Share Price: {loan.sharePrice}</div>
-        <div>Amount Repaid: {loan.amountRepaid}</div>
-        <div>Current State: {loan.currentState}</div>
-        <div></div>
-        <div></div>
-      </div>
-      <div>----</div>
+      <div>-- Actions --</div>
       <div>
         <div><button onClick={mint}>Borrower: Mint loan</button></div>
         <div><button onClick={approve}>Lender: Approve spend limit</button></div>
@@ -176,6 +175,24 @@ function App () {
         <div><button onClick={approve}>Borrower: Approve spend limit</button></div>
         <div><button onClick={repay}>Borrower: repay</button></div>
         <div><button onClick={burn}>Lender: burn and withdraw</button></div>
+      </div>
+      <div>--Loan Info--</div>
+      <div>
+        {
+          loans.map((loan) => 
+            <div>
+              <div>_________</div>
+              <div>LoanId: {loan.loanId}</div>
+              <div>Borrower: {loan.borrower}</div>
+              <div>Token: {loan.token}</div>
+              <div>Num Shares: {loan.numShares}</div>
+              <div>Share Price: {loan.sharePrice}</div>
+              <div>Shares Left: {loan.sharesLeft}</div>
+              <div>Amount Repaid: {loan.amountRepaid}</div>
+              <div>Current State: {loan.currentState}</div>
+            </div>
+          )
+        } 
       </div>
     </main>
   )
