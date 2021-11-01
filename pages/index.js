@@ -13,7 +13,7 @@ function App () {
 
   // TODO Move these to configs
   // Alfajores
-  const lovaAddress = '0x498aC6614C069EECa0B08dFB4F883356EA7017c7';
+  const lovaAddress = '0x003078feADd721C37f08d934EE7F71576285EdA7';
   const cusdAddress = '0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1';
   const ceurAddress = '0x10c892A6EC43a53E45D0B916B4b7D383B1b78C0F';
   // Local
@@ -86,9 +86,10 @@ function App () {
     const borrower = kit.defaultAccount;
     const token = cusdAddress;
     const amountRequested = (5 * 10**ERC20_DECIMALS).toString();
-    const numShares = 5;
+    const sharePrice = (1 * 10**ERC20_DECIMALS).toString();;
+    const kivaId = 2268570;
 
-    const txObject = await lovaContract.methods.mint(borrower, token, amountRequested, numShares); 
+    const txObject = await lovaContract.methods.mint(borrower, token, amountRequested, sharePrice, kivaId); 
     let tx = await kit.sendTransactionObject(txObject, { from: kit.defaultAccount });
     let receipt = await tx.waitReceipt();
     console.log(receipt);
@@ -213,6 +214,7 @@ function App () {
               <div>LoanId: {loan.loanId}</div>
               <div>Borrower: {loan.borrower}</div>
               <div>Token: {loan.token}</div>
+              <div>Kiva ID: <a href={"https://api.kivaws.org/v2/loans/" + loan.kivaId}>{loan.kivaId}</a></div>
               <div>Num Shares: {loan.numShares}</div>
               <div>Share Price: {loan.sharePrice}</div>
               <div>Shares Left: {loan.sharesLeft}</div>

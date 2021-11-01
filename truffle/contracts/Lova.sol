@@ -7,21 +7,21 @@ import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 /**
- * Lova is a crowd-funding marketplace for 0% interest microloans 
+ * Lova is a crowd-funding marketplace for 0% interest microloans inspired by Kiva
  * We use ERC1155 since we have lots of loans which are each unique and are comprised on non-unique shares
- * ERC721 wouldn't work as it only allows one owner of each loan while we need to support multiple lenders per loan
+ * ERC721 wouldn't work as it only allows one owner of each loan, while we need to support multiple lenders per loan
  * 
  * TODO could introduce the EXPIRED state if the loan doesn't fundraise in a set amount of time - this would allow the lenders to withdraw
  * TODO think about meta-transactions where the account sending and paying for execution may not be the actual sender
  * TODO could implement batch versions of all functions
  */
-contract Lova is ERC1155, ERC1155Receiver, ERC1155Holder, Ownable {
+contract Lova is ERC1155, ERC1155Receiver, ERC1155Holder, Ownable  {
     using Counters for Counters.Counter;
 
     // Variables
-    Counters.Counter _loanIdCounter;
     mapping(uint256 => LoanInfo) _loanInfo;
     enum State {RAISING, FUNDED, REPAYING, REPAID} // TODO could add expired in raising and/or defaulted
     struct LoanInfo {
@@ -31,7 +31,9 @@ contract Lova is ERC1155, ERC1155Receiver, ERC1155Holder, Ownable {
         uint256 sharePrice;
         uint256 amountRepaid;
         State currentState;
+        uint256 kivaId; // For now we reference an id of a kiva loan to fetch metadata, eventually this would be independant
     }
+    Counters.Counter _loanIdCounter;
     
     // Events
     event LoanRequested(uint256 loanId, address addr, uint256 amount);
@@ -43,37 +45,49 @@ contract Lova is ERC1155, ERC1155Receiver, ERC1155Holder, Ownable {
     event LenderWithdrew(uint256 loanId, address addr, uint256 amount);
     
     // Functions
-    constructor() ERC1155("LOVA") {}
     
-    // TODO not 100% sure if this is right
+    /**
+     * For simplicity for now we reference a kivaId and use the Kiva API to fetch loan metadata
+     * Eventually this would be independantly stored on IPFS
+     * Clients calling this function must replace the `\{id\}` substring with the
+     * actual token type ID as per https://eips.ethereum.org/EIPS/eip-1155#metadata[defined in the EIP].
+     */
+    constructor() ERC1155("https://api.kivaws.org/v2/loans/{id}") {}
+    
+    /**
+     * Bubble supportsInterface down the class hierarchy
+     */
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC1155, ERC1155Receiver) returns (bool) {
         return super.supportsInterface(interfaceId);
     }
-
+    
     /**
      * Called by the borrower to "mint" a new loan for a requested amount. All loan shares are initially owned by the contract.
+     * For now we support a kivaId to reference the Kiva API to fetch metadata
      * TODO we could hard-code a share price instead of having the borrower supply they're own numShares
      * TODO ensure token address is a real ERC-20 token, or white-list approved tokens
      * TODO currently hard-coding the data field to "", perhaps there's something more interesting to do
      */
-    function mint(address borrower, address token, uint256 amountRequested, uint256 numShares)
+    function mint(address borrower, address token, uint256 amountRequested, uint256 sharePrice, uint256 kivaId)
         public
     {
         // Checks 
         require(amountRequested > 0, "Amount requested must be greater than 0");
-        require(numShares > 0, "Num shares must be greater than 0");
-        require(amountRequested % numShares == 0, "Amount requested must be divisible by number of shares");
+        require(sharePrice > 0, "Share price must be greater than 0");
+        require(amountRequested >= sharePrice, "Amount requested must be greater than or equal to share price");
+        require(amountRequested % sharePrice == 0, "Amount requested must be divisible by share price");
         
         // Effects
         uint256 curLoanId = _loanIdCounter.current();
-        uint256 sharePrice = amountRequested / numShares;
+        uint256 numShares = amountRequested / sharePrice;
         _loanInfo[curLoanId] = LoanInfo({
             borrower: borrower,
             token: token,
             numShares: numShares,
             sharePrice: sharePrice,
             currentState: State.RAISING,
-            amountRepaid: 0
+            amountRepaid: 0,
+            kivaId: kivaId
         });
         _loanIdCounter.increment();
         emit LoanRequested(curLoanId, borrower, amountRequested);
@@ -84,7 +98,7 @@ contract Lova is ERC1155, ERC1155Receiver, ERC1155Holder, Ownable {
     
     /**
      * Lender transfers ERC20 token to the contract for a specific loan, they recieve loan shares
-     * TODO it may be confusing to specify numShares, since the lender doesn't automatically know how much they're lending
+     * TODO it may be confusing to specify numShares, since the lender then needs to calculate how much they're lending
      * TODO may need to add nonReentrant
      **/
     function lend(uint256 loanId, uint256 numShares) payable public  {
