@@ -1,6 +1,16 @@
 # Lova
 
-This is a hackathon project for Kiva-style crowd-funded microloans on the Celo blockchain.
+This is a hackathon project for Kiva-style crowdfunded microloans on the Celo blockchain.
+
+## Background
+
+The crowdfunding platform Kiva allows internets users to connect and lend directly to borrowers around the world at 0% interest. However due to the nature of web 2.0 there are a number of parties that sit in between borrowers and lenders. With web 3.0 and blockchain there's the oppurtunity for them to connect directly.
+
+Celo is a mobile-first blockchain aimed at the developing world. Some of the benefits it provides is low transactions costs, native support for stable coins, the ability to pay transaction fees in stables coins, and various optimizations for low-bandwidth mobile envirnoments.
+
+This project contains both a DeFi smart contract and a front end Dapp to interact with it. The smart contract is based on the ERC1155 standard which allows generating multiple loans that are each unique, similar to an NFT, while also allowing each loan to contain shares which are generic and interchanagable. A borrower can "mint" or create a loan via the smart contract with a metadata based on Kiva's API. They can choose any ERC20 to demoninate the loan, by default though, it's cUSD the native Celo stable coin. Lenders can lend to specific loans by exchanging ERC20 tokens for loan shares. When the borrower repays to the loan contract, these loan shares can then be "burned" or exchanged back for ERC20 tokens.
+
+One of the advantages of Defi is composablity and extensibility. For example lenders could easily trade or transfer loan shares on a secondary market, something that's not possible with Kiva today. It would also be possible to pool loan shares into various tranches to provide lower risk and higher risk lending pools. Also because the blockchain is a public record of transations, it also servers as a credit history for borrower to be able to take on larger and larger loans.
 
 ## Getting Started
 
@@ -23,6 +33,10 @@ Then run the development server:
 ```bash
 yarn dev
 ```
+
+## Deployment
+
+This has been deployed via Vercel to https://lova-jv2frqji6-jsaur.vercel.app/
 
 ## Alfajores Testnet
 
