@@ -4,6 +4,8 @@ import { ContractKitProvider } from '@celo-tools/use-contractkit';
 import '@celo-tools/use-contractkit/lib/styles.css';
 import lovaJson from '../truffle/build/contracts/Lova.json';
 import erc20Json from '../truffle/build/contracts/ERC20.json';
+import Head from 'next/head';
+import { PrimaryButton, SecondaryButton, toast } from '../components';
 
 function App () {
   const { connect, network, getConnectedKit} = useContractKit();
@@ -147,16 +149,16 @@ function App () {
   function Buttons(props) {
     const loanId = props.loan.loanId;
     if (props.loan.currentState == 0) {
-      return (<div><button onClick={() => lend(loanId)}>Lender: lend</button></div>);
+      return (<div><PrimaryButton onClick={() => lend(loanId)}>Lender: lend</PrimaryButton></div>);
     }
     if (props.loan.currentState == 1) {
-      return (<div><button onClick={() => borrow(loanId)}>Borrower: borrow</button></div>);
+      return (<div><PrimaryButton onClick={() => borrow(loanId)}>Borrower: borrow</PrimaryButton></div>);
     }
     if (props.loan.currentState == 2) {
-      return (<div><button onClick={() => repay(loanId)}>Borrower: repay</button></div>);
+      return (<div><PrimaryButton onClick={() => repay(loanId)}>Borrower: repay</PrimaryButton></div>);
     }
     if (props.loan.currentState == 3) {
-      return <div><button onClick={() => burn(loanId)}>Lender: burn and withdraw</button></div>
+      return <div><PrimaryButton onClick={() => burn(loanId)}>Lender: burn and withdraw</PrimaryButton></div>
     }
   }
 
@@ -184,49 +186,55 @@ function App () {
   }, [])
 
   return (
-    <main>
-      <h1>Lova</h1>
-      <div>
-        <div><button onClick={connect}>Click here to connect your wallet</button></div>
-        <div><button onClick={getAccountSummary}>Refresh account</button></div>
-        <div><button onClick={getLoans}>Refresh loans</button></div>
-      </div>
-      <div>-- Wallet Info --</div>
-      <div>
-        <div>Network: {network.name}</div>
-        <div>Address: {account.address}</div>
-        <div>Celo: {account.CELO}</div>
-        <div>cUSD: {account.cUSD}</div>
-        <div>cEUR: {account.cEUR}</div>
-      </div>
-      <div>-- General Actions --</div>
-      <div>
-        
-        <div><button onClick={mint}>Borrower: Create and mint $5 loan</button></div>
-        <div><button onClick={approve}>Approve spend limit</button></div>
-      </div>
-      <div>--Loans--</div>
-      <div>
-        {
-          loans.map((loan) => 
-            <div key={loan.loanId}>
-              <div>_________</div>
-              <div>LoanId: {loan.loanId}</div>
-              <div>Borrower: {loan.borrower}</div>
-              <div>Token: {loan.token}</div>
-              <div>Kiva ID: <a href={"https://api.kivaws.org/v2/loans/" + loan.kivaId}>{loan.kivaId}</a></div>
-              <div>Num Shares: {loan.numShares}</div>
-              <div>Share Price: {loan.sharePrice}</div>
-              <div>Shares Left: {loan.sharesLeft}</div>
-              <div>Amount Repaid: {loan.amountRepaid}</div>
-              <div>Current State: {currentState(loan.currentState)}</div>
-              <div>Owner's Share Balance: {loan.ownerBalance}</div>
-              <Buttons loan={loan} />
-            </div>
-          )
-        } 
-      </div>
-    </main>
+    <div>
+      <Head>
+        <title>Lova</title>
+        <link rel="icon" href="/favicon.ico" />
+      </Head>
+      <main className="max-w-screen-sm mx-auto py-10 md:py-20 px-4">
+        <h1 className="font-bold text-2xl">Lova</h1>
+        <div className="flex flex-col md:flex-row md:space-x-4 mb-6">
+          <div><PrimaryButton onClick={connect}>Connect wallet</PrimaryButton></div>
+        </div>
+        <div className="flex flex-col md:flex-row md:space-x-4 mb-6">
+          <div><SecondaryButton onClick={getAccountSummary}>Refresh account</SecondaryButton></div>
+          <div><SecondaryButton onClick={getLoans}>Refresh loans</SecondaryButton></div>
+        </div>
+        <div className="font-bold">Wallet Info</div>
+        <div className="border px-4">
+          <div>Network: {network.name}</div>
+          <div>Address: {account.address}</div>
+          <div>Celo: {account.CELO}</div>
+          <div>cUSD: {account.cUSD}</div>
+          <div>cEUR: {account.cEUR}</div>
+        </div>
+        <div className="font-bold">General Actions</div>
+        <div>
+          <div><PrimaryButton onClick={mint}>Borrower: Create and mint $5 loan</PrimaryButton></div>
+          <div><PrimaryButton onClick={approve}>Approve spend limit</PrimaryButton></div>
+        </div>
+        <div className="font-bold">Loans</div>
+        <div>
+          {
+            loans.map((loan) => 
+              <div key={loan.loanId} className="border px-4">
+                <div>LoanId: {loan.loanId}</div>
+                <div>Borrower: {loan.borrower}</div>
+                <div>Token: {loan.token}</div>
+                <div>Kiva ID: <a href={"https://api.kivaws.org/v2/loans/" + loan.kivaId}>{loan.kivaId}</a></div>
+                <div>Num Shares: {loan.numShares}</div>
+                <div>Share Price: {loan.sharePrice}</div>
+                <div>Shares Left: {loan.sharesLeft}</div>
+                <div>Amount Repaid: {loan.amountRepaid}</div>
+                <div>Current State: {currentState(loan.currentState)}</div>
+                <div>Owner's Share Balance: {loan.ownerBalance}</div>
+                <Buttons loan={loan} />
+              </div>
+            )
+          } 
+        </div>
+      </main>
+    </div>
   )
 }
 

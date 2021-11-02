@@ -11,18 +11,24 @@
   "dependencies": {
     "@celo-tools/use-contractkit": "^1.2.0",
     "@celo/contractkit": "^1.2.5",
+    "@kiva/kv-components": "^1.1.1",
     "@openzeppelin/contracts": "^4.3.2",
     "bignumber.js": "^9.0.1",
     "next": "11.1.2",
     "react": "17.0.2",
-    "react-dom": "17.0.2"
+    "react-dom": "17.0.2",
+    "react-hot-toast": "^2.1.1"
   },
   "devDependencies": {
+    "@kiva/kv-tokens": "^1.1.0",
     "@types/node": "^16.10.3",
     "@types/react": "^17.0.27",
+    "autoprefixer": "^10.4.0",
     "celo-devchain": "^3.3.0",
     "eslint": "7.32.0",
     "eslint-config-next": "11.1.2",
+    "postcss": "^8.3.11",
+    "tailwindcss": "^2.2.19",
     "typescript": "^4.4.3"
   }
 }
