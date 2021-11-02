@@ -201,7 +201,7 @@ function App () {
           <div><SecondaryButton onClick={getLoans}>Refresh loans</SecondaryButton></div>
         </div>
         <div className="font-bold">Wallet Info</div>
-        <div className="border px-4">
+        <div className="border px-4 text-gray-600">
           <div>Network: {network.name}</div>
           <div>Address: {account.address}</div>
           <div>Celo: {account.CELO}</div>
@@ -217,7 +217,7 @@ function App () {
         <div>
           {
             loans.map((loan) => 
-              <div key={loan.loanId} className="border px-4">
+              <div key={loan.loanId} className="border px-4 text-gray-600">
                 <div>LoanId: {loan.loanId}</div>
                 <div>Borrower: {loan.borrower}</div>
                 <div>Token: {loan.token}</div>
@@ -227,7 +227,7 @@ function App () {
                 <div>Shares Left: {loan.sharesLeft}</div>
                 <div>Amount Repaid: {loan.amountRepaid}</div>
                 <div>Current State: {currentState(loan.currentState)}</div>
-                <div>Owner's Share Balance: {loan.ownerBalance}</div>
+                <div>Owner Share Balance: {loan.ownerBalance}</div>
                 <Buttons loan={loan} />
               </div>
             )
