@@ -1,3 +1,4 @@
+{/*
 import React, { useEffect, useState } from 'react';
 import { useContractKit } from '@celo-tools/use-contractkit';
 import { ContractKitProvider } from '@celo-tools/use-contractkit';
@@ -5,58 +6,7 @@ import '@celo-tools/use-contractkit/lib/styles.css';
 import lovaJson from '../truffle/build/contracts/Lova.json';
 import erc20Json from '../truffle/build/contracts/ERC20.json';
 import Head from 'next/head';
-import Sidebar from '../components/sidebar';
-import Rightbar from '../components/rightbar';
-import OutlinedCard from '../components/outlinedcard';
-import { makeStyles } from '@mui/styles';
-import theme from '../src/theme';
-import BorrowerCard from '../components/borrowercard';
-
-import { Button, Typography, Modal, Box, Divider, TextField} from '@mui/material';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-
-const useStyles = makeStyles({
-  primaryBtn: {
-    backgroundColor: theme.palette.primary.main,
-    textTransform: 'none',
-  },
-  arrowButton: {
-    backgroundColor: 'white',
-    borderRadius: '15px',
-    color: theme.palette.secondary.main,
-    boxShadow: 'none',
-    padding: '8px',
-    minWidth: 'auto',
-  },
-  linkBtn:  {
-    color: theme.palette.primary.main,
-    textTransform: 'none',
-    textDecoration: 'underline',
-    fontWeight: 'bold',
-  },
-  modalWrapper: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    width: 400,
-    backgroundColor: '#FFFFFF',
-    border: '2px solid #000',
-    boxShadow: 24,
-    p: 4,
-  },
-  bigTitle: {
-    fontWeight: 'bold',
-    letterSpacing: 0,
-  },
-  smallerTitle: {
-    fontWeight: 'bold',
-  },
-  mainCaption: {
-    color: '#4E4B66',
-    fontSize: '0.9rem',
-  }
-});
+import { PrimaryButton, SecondaryButton, toast } from '../components';
 
 function App () {
   const { connect, network, getConnectedKit} = useContractKit();
@@ -200,18 +150,17 @@ function App () {
   function Buttons(props) {
     const loanId = props.loan.loanId;
     if (props.loan.currentState == 0) {
-      return (<div><Button variant="contained" className={classes.primaryBtn} onClick={() => lend(loanId)}>Lender: lend</Button></div>);
+      return (<div><PrimaryButton onClick={() => lend(loanId)}>Lender: lend</PrimaryButton></div>);
     }
-    /*if (props.loan.currentState == 1) {
-      return (<div><Button   variant="contained"  className={classes.primaryBtn} onClick={() => borrow(loanId)}>Borrower: borrow</Button></div>);
+    if (props.loan.currentState == 1) {
+      return (<div><PrimaryButton onClick={() => borrow(loanId)}>Borrower: borrow</PrimaryButton></div>);
     }
     if (props.loan.currentState == 2) {
-      return (<div><Button  variant="contained"  className={classes.primaryBtn} onClick={() => repay(loanId)}>Borrower: repay</Button></div>);
-    }*/
-    if (props.loan.currentState == 3) {
-      return <div><Button  variant="contained"  className={classes.primaryBtn} onClick={() => burn(loanId)}>Lender: burn and withdraw</Button></div>
+      return (<div><PrimaryButton onClick={() => repay(loanId)}>Borrower: repay</PrimaryButton></div>);
     }
-    return "";
+    if (props.loan.currentState == 3) {
+      return <div><PrimaryButton onClick={() => burn(loanId)}>Lender: burn and withdraw</PrimaryButton></div>
+    }
   }
 
   function currentState(currentState) {
@@ -237,10 +186,6 @@ function App () {
     getLoans()
   }, [])
 
-  const classes = useStyles();
-  const [open, setOpen] = React.useState(false);
-  const handleOpen = () => setOpen(true);
-  const handleClose = () => setOpen(false);
   return (
     <div>
       <Head>
@@ -248,73 +193,30 @@ function App () {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main className="max-w-screen-sm mx-auto py-10 md:py-20 px-4">
-        <Sidebar />
+        <h1 className="font-bold text-2xl">Lova</h1>
+        <div className="flex flex-col md:flex-row md:space-x-4 mb-6">
+          <div><PrimaryButton onClick={connect}>Connect wallet</PrimaryButton></div>
+        </div>
+        <div className="flex flex-col md:flex-row md:space-x-4 mb-6">
+          <div><SecondaryButton onClick={getAccountSummary}>Refresh account</SecondaryButton></div>
+          <div><SecondaryButton onClick={getLoans}>Refresh loans</SecondaryButton></div>
+        </div>
+        <div className="font-bold">Wallet Info</div>
+        <div className="border px-4 text-gray-600">
+          <div>Network: {network.name}</div>
+          <div>Address: {account.address}</div>
+          <div>Celo: {account.CELO}</div>
+          <div>cUSD: {account.cUSD}</div>
+          <div>cEUR: {account.cEUR}</div>
+        </div>
+        <div className="font-bold">General Actions</div>
         <div>
-          <Typography variant="h4" className={classes.bigTitle}>Welcome to Lova</Typography>
+          <div><PrimaryButton onClick={mint}>Borrower: Create and mint $5 loan</PrimaryButton></div>
+          <div><PrimaryButton onClick={approve}>Approve spend limit</PrimaryButton></div>
         </div>
-        
-        <Typography className={classes.mainCaption} variant="caption" sx={{display:"block", marginBottom:"20px"}}>Move cryptocurrency from your wallet onto Lova to start lending to our entrepreneurs.</Typography>
-      
-        
-        <div className="grid grid-cols-2 gap-4">
-          <OutlinedCard title="Start lending now" stylename="lend">
-            <div>
-              <Button onClick={handleOpen} variant="contained" className={classes.arrowButton}>
-                <ArrowForwardIcon />
-              </Button>
-              <Modal
-                open={open}
-                onClose={handleClose}
-                aria-labelledby="modal-modal-title"
-                aria-describedby="modal-modal-description"
-              >
-                <Box className={classes.modalWrapper}>
-                  <Typography id="modal-modal-title" variant="h6" component="h2">
-                    Deposit
-                  </Typography>
-                  <Typography id="modal-modal-description" sx={{ mt: 2 }}>
-                    Move cryptocurrency from your wallet onto Lova to start lending to our entrepreneurs.
-                  </Typography>
-                  <TextField id="standard-basic" label="# of shares" variant="standard" />
-                  <div className="grid grid-cols-2 gap-4">
-                    <Button>Approve cUSD</Button>
-                    <Button>Lend</Button>
-                  </div>
-                </Box>
-              </Modal>
-            </div>
-          </OutlinedCard>
-          <OutlinedCard title="Choose your borrower" stylename="borrowers">
-            <div>
-              <Button variant="contained" className={classes.arrowButton}>
-                <ArrowForwardIcon />
-              </Button>
-            </div>
-          </OutlinedCard>
-        </div>
-         
+        <div className="font-bold">Loans</div>
         <div>
-          <Typography variant="h6" className={classes.smallerTitle}>
-            Latest repaid loans
-          </Typography>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <BorrowerCard title="Mburukuja Poty Group" description="A loan of $2,900 helps a member to buy vegetables, beef, chicken, ham, cheese, eggs, and more." imgsource="/img/potygroup.jpg">
-              <Button variant="contained" className={classes.primaryBtn}>Withdraw</Button>
-          </BorrowerCard>
-          <BorrowerCard title="Flor De Coco Group" description="A loan of $2,825 helps a member to buy clothing to resell in her community." imgsource="/img/flordecoco.jpg">
-            <Button variant="contained" className={classes.primaryBtn}>Withdraw</Button>
-          </BorrowerCard>
-        </div>
-        
-     
-         {/*<div><Button variant="contained"  className={classes.primaryBtn} onClick={mint}>Borrower: Create and mint $5 loan</Button></div>
-           <div><Button variant="contained"  className={classes.primaryBtn} onClick={approve}>Approve spend limit</Button></div>*/}
-      
-        
-        <div>
-          {/*
+          {
             loans.map((loan) => 
               <div key={loan.loanId} className="border px-4 text-gray-600">
                 <div>LoanId: {loan.loanId}</div>
@@ -326,39 +228,16 @@ function App () {
                 <div>Shares Left: {loan.sharesLeft}</div>
                 <div>Amount Repaid: {loan.amountRepaid}</div>
                 <div>Current State: {currentState(loan.currentState)}</div>
-                <div>Owner Share Balance: {loan.ownerBalance}</div> 
+                <div>Owner Share Balance: {loan.ownerBalance}</div>
                 <Buttons loan={loan} />
               </div>
             )
-          */} 
+          } 
         </div>
-        <Rightbar>
-        
-          <Button  variant="contained" className={classes.primaryBtn} onClick={connect}>Connect wallet</Button>
-          <Typography sx={{fontWeight: 'bold', marginTop: '24px'}}>
-            Wallet Information
-          </Typography>
-          <Typography sx={{color: '#4E4B66', fontSize: '0.9rem'}}>Network: {network.name}</Typography>
-          <Typography noWrap="false" sx={{color: '#4E4B66', fontSize: '0.9rem'}}>Address: {account.address}</Typography>
-          <Typography sx={{color: '#4E4B66', fontSize: '0.9rem'}}>Celo: {account.CELO}</Typography>
-          <Typography sx={{color: '#4E4B66', fontSize: '0.9rem'}}>cUSD: {account.cUSD}</Typography>
-          <Typography sx={{color: '#4E4B66', fontSize: '0.9rem'}}>cEUR: {account.cEUR}</Typography>
-         
-         <Divider />
-          <div>
-            <div>
-              <Button className={classes.linkBtn} onClick={getAccountSummary}>Refresh account</Button>
-            </div>
-            <div>
-              <Button className={classes.linkBtn} onClick={getLoans}>Refresh loans</Button>
-            </div>
-        </div>
-        </Rightbar>
       </main>
     </div>
   )
 }
-
 
 function WrappedApp() {
   return (
@@ -374,3 +253,4 @@ function WrappedApp() {
   );
 }
 export default WrappedApp;
+*/}
