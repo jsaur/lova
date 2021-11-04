@@ -15,9 +15,10 @@ const useStyles = makeStyles({
   cardWrapper: {
     background: 'linear-gradient(321.69deg, #FFDD7D 0%, #FFBA2F 100%)',
     marginBottom: '16px',
-    boxShadow: 'none',
+    boxShadow: '0px 19.3841px 51.6908px rgba(0, 0, 0, 0.09)',
     borderRadius: '15px',
-    color: 'white',
+    border: '1px solid #E1E2E2',
+    color: 'white'
   },
   cardTitle: {
     color: 'white',

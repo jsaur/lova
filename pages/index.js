@@ -19,8 +19,12 @@ const useStyles = makeStyles({
   primaryBtn: {
     backgroundColor: theme.palette.primary.main,
     textTransform: 'none',
+    borderRadius: '15px',
+    boxShadow: 'none',
+    width: '100%',
     '&:hover': {
       background: "#2FA06A",
+      boxShadow: 'none',
     }
   },
   arrowButton: {
@@ -308,11 +312,11 @@ function App () {
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <BorrowerCard title="Mburukuja Poty Group" description="A loan of $2,900 helps a member to buy vegetables, beef, chicken, ham, cheese, eggs, and more." imgsource="/img/potygroup.jpg">
-              <Button variant="contained" className={classes.primaryBtn}>Withdraw</Button>
+          <BorrowerCard title="Soufiane Dari" description="A loan helps Soufiane start his community business and empower his neighborhood." imgsource="/img/soufianeloan.png">
+              <Button  variant="contained"  className={classes.primaryBtn} onClick={() => burn(2)}>Withdraw</Button>
           </BorrowerCard>
-          <BorrowerCard title="Flor De Coco Group" description="A loan of $2,825 helps a member to buy clothing to resell in her community." imgsource="/img/flordecoco.jpg">
-            <Button variant="contained" className={classes.primaryBtn}>Withdraw</Button>
+          <BorrowerCard title="Flor De Coco Group" description="A loan helps a Flor de Coco group member to buy clothing to resell in her community." imgsource="/img/flordecoco.jpg">
+            <Button  variant="contained"  className={classes.primaryBtn} onClick={() => burn(2)}>Withdraw</Button>
           </BorrowerCard>
         </div>
         
