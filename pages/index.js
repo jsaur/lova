@@ -19,6 +19,7 @@ const useStyles = makeStyles({
   primaryBtn: {
     backgroundColor: theme.palette.primary.main,
     textTransform: 'none',
+
   },
   arrowButton: {
     backgroundColor: 'white',
@@ -44,6 +45,7 @@ const useStyles = makeStyles({
     border: '2px solid #000',
     boxShadow: 24,
     p: 4,
+    padding: '25px',
   },
   bigTitle: {
     fontWeight: 'bold',
@@ -272,13 +274,13 @@ function App () {
                   <Typography id="modal-modal-title" variant="h6" component="h2">
                     Deposit
                   </Typography>
-                  <Typography id="modal-modal-description" sx={{ mt: 2 }}>
+                  <Typography id="modal-modal-description" sx={{ mt: 2, color: '#4E4B66', fontSize: '0.9rem' }}>
                     Move cryptocurrency from your wallet onto Lova to start lending to our entrepreneurs.
                   </Typography>
-                  <TextField id="standard-basic" label="# of shares" variant="standard" />
+                  <TextField id="standard-basic" label="# of shares" variant="standard" sx={{marginBottom:'25px', marginTop:'20px'}} />
                   <div className="grid grid-cols-2 gap-4">
-                    <Button>Approve cUSD</Button>
-                    <Button>Lend</Button>
+                    <Button variant="contained" className={classes.primaryBtn} onClick={() => approve()}>Approve cUSD</Button>
+                    <Button variant="contained" className={classes.primaryBtn} onClick={() => lend(1)}>Lend</Button>
                   </div>
                 </Box>
               </Modal>
