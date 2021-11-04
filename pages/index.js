@@ -19,7 +19,9 @@ const useStyles = makeStyles({
   primaryBtn: {
     backgroundColor: theme.palette.primary.main,
     textTransform: 'none',
-
+    '&:hover': {
+      background: "#2FA06A",
+    }
   },
   arrowButton: {
     backgroundColor: 'white',
@@ -28,6 +30,9 @@ const useStyles = makeStyles({
     boxShadow: 'none',
     padding: '8px',
     minWidth: 'auto',
+    '&:hover': {
+      background: "#2FA06A",
+    }
   },
   linkBtn:  {
     color: theme.palette.primary.main,
