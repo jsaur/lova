@@ -6,7 +6,6 @@ import CardContent from '@mui/material/CardContent';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import { makeStyles } from '@mui/styles';
-import classnames from 'classnames';
 
 const useStyles = makeStyles({
   boxWrapper: {
