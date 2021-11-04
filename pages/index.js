@@ -32,6 +32,7 @@ const useStyles = makeStyles({
     minWidth: 'auto',
     '&:hover': {
       background: "#2FA06A",
+      color: 'white',
     }
   },
   linkBtn:  {
