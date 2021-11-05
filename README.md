@@ -4,13 +4,13 @@ This is a hackathon project for Kiva-style crowdfunded microloans on the Celo bl
 
 ## Background
 
-The crowdfunding platform Kiva allows internets users to connect and lend directly to borrowers around the world at 0% interest. However due to the nature of web 2.0 there are a number of parties that sit in between borrowers and lenders. With web 3.0 and blockchain there's the oppurtunity for them to connect directly.
+The crowdfunding platform Kiva allows internets users to connect and lend directly to borrowers around the world at 0% interest. However due to the nature of web 2.0 there are a number of parties that sit in between borrowers and lenders. With web 3.0 and blockchain there's the opportunity for them to connect directly.
 
-Celo is a mobile-first blockchain aimed at the developing world. Some of the benefits it provides is low transactions costs, native support for stable coins, the ability to pay transaction fees in stables coins, and various optimizations for low-bandwidth mobile envirnoments.
+Celo is a mobile-first blockchain aimed at the developing world. Some of the benefits it provides is low transactions costs, native support for stable coins, the ability to pay transaction fees in stables coins, and various optimizations for low-bandwidth mobile environments.
 
-This project contains both a DeFi smart contract and a front end Dapp to interact with it. The smart contract is based on the ERC1155 standard which allows generating multiple loans that are each unique, similar to an NFT, while also allowing each loan to contain shares which are generic and interchanagable. A borrower can "mint" or create a loan via the smart contract with a metadata based on Kiva's API. They can choose any ERC20 to demoninate the loan, by default though, it's cUSD the native Celo stable coin. Lenders can lend to specific loans by exchanging ERC20 tokens for loan shares. When the borrower repays to the loan contract, these loan shares can then be "burned" or exchanged back for ERC20 tokens.
+This project contains both a DeFi smart contract and a front end Dapp to interact with it. The smart contract is based on the ERC1155 standard which allows generating multiple loans that are each unique, similar to an NFT, while also allowing each loan to contain shares which are generic and interchangeable. A borrower can "mint" or create a loan via the smart contract with a metadata based on Kiva's API. They can choose any ERC20 to denominate the loan, by default though, it's cUSD the native Celo stable coin. Lenders can lend to specific loans by exchanging ERC20 tokens for loan shares. When the borrower repays to the loan contract, these loan shares can then be "burned" or exchanged back for ERC20 tokens.
 
-One of the advantages of Defi is composablity and extensibility. For example lenders could easily trade or transfer loan shares on a secondary market, something that's not possible with Kiva today. It would also be possible to pool loan shares into various tranches to provide lower risk and higher risk lending pools. Also because the blockchain is a public record of transations, it also servers as a credit history for borrower to be able to take on larger and larger loans.
+One of the advantages of Defi is composability and extensibility. For example lenders could easily trade or transfer loan shares on a secondary market, something that's not possible with Kiva today. It would also be possible to pool loan shares into various tranches to provide lower risk and higher risk lending pools. Also because the blockchain is a public record of transactions, it also servers as a credit history for borrower to be able to take on larger and larger loans.
 
 ## Getting Started
 
@@ -69,7 +69,7 @@ In order to see the full flow, you need to run through the following steps:
 7. Switch to borrower account, and click "borrow". This withdraws the loan amount from the contract and into your balance.
 8. As borrower submit your first repayment by clicking "repay". This is hard-coded to repay $2.50
 9. Click it a second time to fully repay the loan
-10. Switch to the lender accound and click burn and withdraw - with will burn all your outstanding shares, and send you the cUSD balance.
+10. Switch to the lender account and click burn and withdraw - with will burn all your outstanding shares, and send you the cUSD balance.
 
 
 ## Truffle
@@ -121,6 +121,5 @@ The maximum gas limit for a block on celo is 10,000,000 gas - don't try to set a
 
 ## TODO
 
-Right now the webapp just displays a button to connect Celo wallet, and fetches the address and balances of the connected wallet.
-Right not I'm manually deploying the Loan contract to Alfajores, and pasting the compiled ABI into the build folder,
-eventually I want it so that buidling and deploying all happens from this repo.
+Right not I'm manually deploying the Loan contract to Alfajores using remix, and then using truffle to compile the ABI into the build folder,
+eventually I want it so that building and deploying all happens via truffle from this repo.
