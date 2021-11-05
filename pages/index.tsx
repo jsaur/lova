@@ -4,15 +4,15 @@ import { StableToken } from '@celo/contractkit';
 import { useContractKit } from '@celo-tools/use-contractkit';
 import Web3 from 'web3';
 import lovaJson from '../truffle/build/contracts/Lova.json';
-import erc20Json from '../truffle/build/contracts/ERC20.json';
 import Head from 'next/head';
 import Sidebar from '../components/sidebar';
 import Rightbar from '../components/rightbar';
 import OutlinedCard from '../components/outlinedcard';
 import useStyles from '../src/usestyles';
 import BorrowerCard from '../components/borrowercard';
-import { Button, Typography, Modal, Box, Divider, TextField} from '@mui/material';
+import { Button, Typography, Modal, Box, Divider, TextField, CircularProgress} from '@mui/material';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import { toast } from '../components';
 
 const defaultSummary = {
   name: '',
@@ -21,7 +21,10 @@ const defaultSummary = {
   celo: new BigNumber(0),
   cusd: new BigNumber(0),
   ceur: new BigNumber(0),
+  cusdAllowance: new BigNumber(0)
 };
+const defaultGasPrice = 100000000000;
+const ERC20_DECIMALS = 18;
 
 function truncateAddress(address: string) {
   return `${address.slice(0, 8)}...${address.slice(36)}`;
@@ -40,7 +43,8 @@ export default function Home(): React.ReactElement {
   } = useContractKit();
   const [summary, setSummary] = useState(defaultSummary);
   let [loans, setLoans] = useState([]);
-  const ERC20_DECIMALS = 18;
+  const [transacting, setTransacting] = useState(false);
+  
 
   // TODO Move these to configs
   // Alfajores
@@ -65,7 +69,7 @@ export default function Home(): React.ReactElement {
       kit.contracts.getStableToken(StableToken.cUSD),
       kit.contracts.getStableToken(StableToken.cEUR),
     ]);
-    const [summary, celo, cusd, ceur] = await Promise.all([
+    const [summary, celo, cusd, ceur, cusdAllowance] = await Promise.all([
       accounts.getAccountSummary(address).catch((e) => {
         console.error(e);
         return defaultSummary;
@@ -73,12 +77,14 @@ export default function Home(): React.ReactElement {
       goldToken.balanceOf(address),
       cUSD.balanceOf(address),
       cEUR.balanceOf(address),
+      cUSD.allowance(address, lovaAddress)
     ]);
     setSummary({
       ...summary,
       celo,
       cusd,
       ceur,
+      cusdAllowance
     });
   }, [address, kit]);
 
@@ -105,16 +111,26 @@ export default function Home(): React.ReactElement {
     setLoans(loans);
   }
 
-    // TODO right now hard-coding all values - eventually these should come from inputs
-
+  /**
+   * Approve contract to spend cUSD, defaulting to 10,000 for now
+   * This only needs to be called once, if cusdAllowance > 0 then this can be skipped
+   */
   async function approve() {
-    const erc20Abi: any = erc20Json.abi
-    cusdContract = new kit.web3.eth.Contract(erc20Abi, cusdAddress);
-    const approveLimit = (100 * (10**ERC20_DECIMALS)).toString();;
-    const txObject = await cusdContract.methods.approve(lovaAddress, approveLimit); 
-    let tx = await kit.sendTransactionObject(txObject, { from: kit.defaultAccount });
-    let receipt = await tx.waitReceipt();
-    console.log(receipt);
+    try {
+      setTransacting(true);
+      const cUSD = await kit.contracts.getStableToken(StableToken.cUSD);
+      const approveLimit = Web3.utils.toWei('10000', 'ether');
+      let receipt = await cUSD
+        .approve(lovaAddress, approveLimit)
+        .sendAndWaitForReceipt({ from: kit.defaultAccount, gasPrice: defaultGasPrice });
+      toast.success('Approve succeeded');
+      console.log(receipt);
+    } catch (e) {
+      console.log(e);
+      toast.error((e as Error).message);
+    } finally {
+      setTransacting(false);
+    }
   }
 
   // TODO right now we hard-code a 5 dollar loan with 5 shares, we should add a text box to make it customizable
@@ -253,7 +269,9 @@ export default function Home(): React.ReactElement {
                   </Typography>
                   <TextField id="standard-basic" label="# of shares" variant="standard" sx={{marginBottom:'25px', marginTop:'20px'}} />
                   <div className="grid grid-cols-2 gap-4">
-                    <Button variant="contained" className={classes.primaryBtn} onClick={() => approve()}>Approve cUSD</Button>
+                    <Button disabled={transacting} variant="contained" className={classes.primaryBtn} onClick={() => approve()}>
+                      {transacting ? (<CircularProgress color="inherit" size="1rem" />) : ("Approve cUSD")}
+                    </Button>
                     <Button variant="contained" className={classes.primaryBtn} onClick={() => lend(1)}>Lend</Button>
                   </div>
                 </Box>
@@ -322,6 +340,7 @@ export default function Home(): React.ReactElement {
               <Typography sx={{color: '#4E4B66', fontSize: '0.9rem'}}>Celo: {Web3.utils.fromWei(summary.celo.toFixed())}</Typography>
               <Typography sx={{color: '#4E4B66', fontSize: '0.9rem'}}>cUSD: {Web3.utils.fromWei(summary.cusd.toFixed())}</Typography>
               <Typography sx={{color: '#4E4B66', fontSize: '0.9rem'}}>cEUR: {Web3.utils.fromWei(summary.ceur.toFixed())}</Typography>
+              <Typography sx={{color: '#4E4B66', fontSize: '0.9rem'}}>cUSD Allowance: {Web3.utils.fromWei(summary.cusdAllowance.toFixed())}</Typography>
             </div>
           )}
          <Divider />
