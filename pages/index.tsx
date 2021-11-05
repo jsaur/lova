@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { BigNumber } from 'bignumber.js';
+import { StableToken } from '@celo/contractkit';
 import { useContractKit } from '@celo-tools/use-contractkit';
-import '@celo-tools/use-contractkit/lib/styles.css';
+import Web3 from 'web3';
 import lovaJson from '../truffle/build/contracts/Lova.json';
 import erc20Json from '../truffle/build/contracts/ERC20.json';
 import Head from 'next/head';
@@ -9,13 +11,34 @@ import Rightbar from '../components/rightbar';
 import OutlinedCard from '../components/outlinedcard';
 import useStyles from '../src/usestyles';
 import BorrowerCard from '../components/borrowercard';
-
 import { Button, Typography, Modal, Box, Divider, TextField} from '@mui/material';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 
+const defaultSummary = {
+  name: '',
+  address: '',
+  wallet: '',
+  celo: new BigNumber(0),
+  cusd: new BigNumber(0),
+  ceur: new BigNumber(0),
+};
+
+function truncateAddress(address: string) {
+  return `${address.slice(0, 8)}...${address.slice(36)}`;
+}
+
 export default function Home(): React.ReactElement {
-  const { connect, network, getConnectedKit} = useContractKit();
-  let [account, setAccount] = useState([]);
+  const {
+    kit,
+    address,
+    network,
+    updateNetwork,
+    connect,
+    destroy,
+    performActions,
+    walletType,
+  } = useContractKit();
+  const [summary, setSummary] = useState(defaultSummary);
   let [loans, setLoans] = useState([]);
   const ERC20_DECIMALS = 18;
 
@@ -24,63 +47,70 @@ export default function Home(): React.ReactElement {
   const lovaAddress = '0x003078feADd721C37f08d934EE7F71576285EdA7';
   const cusdAddress = '0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1';
   const ceurAddress = '0x10c892A6EC43a53E45D0B916B4b7D383B1b78C0F';
-  // Local
-  // const lovaAddress = '0x6f42BfAe79aefA1f99553770ACd24A4A037039c1';
-  // const cusdAddress = '0x10A736A7b223f1FE1050264249d1aBb975741E75';
-
-  let kit;
   let lovaContract;
   let cusdContract;
 
-  
+  /**
+   * Fetches account summary and token balances
+   */
+  const fetchSummary = useCallback(async () => {
+    if (!address) {
+      setSummary(defaultSummary);
+      return;
+    }
 
-  // TODO figure out how to run this before the others
-  // TODO figure out how to preserve these values through button clicks
-  async function initLoad() {
-      kit = await getConnectedKit();
-      lovaContract = new kit.web3.eth.Contract(lovaJson.abi, lovaAddress);
-      cusdContract = new kit.web3.eth.Contract(erc20Json.abi, cusdAddress);
-      const web3Accounts = await kit.web3.eth.getAccounts();
-      kit.defaultAccount = web3Accounts[0];
-  }
+    const [accounts, goldToken, cUSD, cEUR] = await Promise.all([
+      kit.contracts.getAccounts(),
+      kit.contracts.getGoldToken(),
+      kit.contracts.getStableToken(StableToken.cUSD),
+      kit.contracts.getStableToken(StableToken.cEUR),
+    ]);
+    const [summary, celo, cusd, ceur] = await Promise.all([
+      accounts.getAccountSummary(address).catch((e) => {
+        console.error(e);
+        return defaultSummary;
+      }),
+      goldToken.balanceOf(address),
+      cUSD.balanceOf(address),
+      cEUR.balanceOf(address),
+    ]);
+    setSummary({
+      ...summary,
+      celo,
+      cusd,
+      ceur,
+    });
+  }, [address, kit]);
 
-  async function getAccountSummary() {
-      await initLoad();
-      // TODO kit.getTotalBalance() seems to throw a "execution reverted: Unknown account" metamask error
-      const totalBalance = await kit.getTotalBalance(kit.defaultAccount);
-      account = {
-        address: kit.defaultAccount,
-        CELO: totalBalance.CELO.shiftedBy(-ERC20_DECIMALS).toFixed(ERC20_DECIMALS),
-        cUSD: totalBalance.cUSD.shiftedBy(-ERC20_DECIMALS).toFixed(ERC20_DECIMALS),
-        cEUR: totalBalance.cEUR.shiftedBy(-ERC20_DECIMALS).toFixed(ERC20_DECIMALS),
-      };
-      setAccount(account);
-  }
-
-  // TODO there are optimiztions here, eg just get info and update a specific loan, but for now we refetch everything
+  /**
+   * Fetches all loans from the lova contract
+   * TODO this isn't very scalable right now, eventually allow pagination
+   * TODO right now we need to be connected to fetch loans, I think due to web3 not know which network to connect to
+   */
   async function getLoans() {
-    await initLoad();
-
+    if (!address) {
+      return;
+    }
+    const lovaAbi: any = lovaJson.abi;
+    lovaContract = new kit.web3.eth.Contract(lovaAbi, lovaAddress);
     let loans = [];
     const loanCount = await lovaContract.methods.loanCount().call();
     // Fetch loans in reverse order
     for (let loanId = loanCount -1 ; loanId >= 0; loanId--) {
       const loanInfo = await lovaContract.methods.loanInfo(loanId).call();
       const sharesLeft = await lovaContract.methods.sharesLeft(loanId).call();
-      const ownerBalance = await lovaContract.methods.balanceOf(kit.defaultAccount, loanId).call();
-      const loan = { loanId, ...loanInfo, sharesLeft, ownerBalance };
+      const loan = { loanId, ...loanInfo, sharesLeft };
       loans.push(loan);
     }
     setLoans(loans);
   }
 
-  // TODO figure out a better method to keep around kit and contract info without doing initLoad each time
-  // TODO right now hard-coding all values - eventually these should come from inputs
+    // TODO right now hard-coding all values - eventually these should come from inputs
 
   async function approve() {
+    const erc20Abi: any = erc20Json.abi
+    cusdContract = new kit.web3.eth.Contract(erc20Abi, cusdAddress);
     const approveLimit = (100 * (10**ERC20_DECIMALS)).toString();;
-    await initLoad();
-
     const txObject = await cusdContract.methods.approve(lovaAddress, approveLimit); 
     let tx = await kit.sendTransactionObject(txObject, { from: kit.defaultAccount });
     let receipt = await tx.waitReceipt();
@@ -89,8 +119,6 @@ export default function Home(): React.ReactElement {
 
   // TODO right now we hard-code a 5 dollar loan with 5 shares, we should add a text box to make it customizable
   async function mint() {
-    await initLoad();
-
     const borrower = kit.defaultAccount;
     const token = cusdAddress;
     const amountRequested = (5 * 10**ERC20_DECIMALS).toString();
@@ -101,54 +129,47 @@ export default function Home(): React.ReactElement {
     let tx = await kit.sendTransactionObject(txObject, { from: kit.defaultAccount });
     let receipt = await tx.waitReceipt();
     console.log(receipt);
-    await getAccountSummary();
+    await fetchSummary();
     await getLoans();
   }
 
   async function lend(loanId) {
     const numShares = 5;
-
-    await initLoad();
     const txObject = await lovaContract.methods.lend(loanId, numShares); 
     let tx = await kit.sendTransactionObject(txObject, { from: kit.defaultAccount });
     let receipt = await tx.waitReceipt();
     console.log(receipt);
-    await getAccountSummary();
+    await fetchSummary();
     await getLoans();
   }
 
   async function borrow(loanId) {
-    await initLoad();
     const txObject = await lovaContract.methods.borrow(loanId); 
     let tx = await kit.sendTransactionObject(txObject, { from: kit.defaultAccount });
     let receipt = await tx.waitReceipt();
     console.log(receipt);
-    await getAccountSummary();
+    await fetchSummary();
     await getLoans();
   }
 
   async function repay(loanId) {
     const repayAmount = (2.5 * 10**ERC20_DECIMALS).toString();
-
-    await initLoad();
     const txObject = await lovaContract.methods.repay(loanId, repayAmount); 
     let tx = await kit.sendTransactionObject(txObject, { from: kit.defaultAccount });
     let receipt = await tx.waitReceipt();
     console.log(receipt);
-    await getAccountSummary();
+    await fetchSummary();
     await getLoans();
   }
 
   async function burn(loanId) {
-    await initLoad();
     const account = kit.defaultAccount;
     const numShares = 5;
-
     const txObject = await lovaContract.methods.burn(account, loanId, numShares); 
     let tx = await kit.sendTransactionObject(txObject, { from: kit.defaultAccount });
     let receipt = await tx.waitReceipt();
     console.log(receipt);
-    await getAccountSummary();
+    await fetchSummary();
     await getLoans();
   }
 
@@ -185,8 +206,8 @@ export default function Home(): React.ReactElement {
   }
 
   useEffect(() => {
-    getAccountSummary()
-  }, [])
+    void fetchSummary();
+  }, [fetchSummary]);
 
   useEffect(() => {
     getLoans()
@@ -288,21 +309,25 @@ export default function Home(): React.ReactElement {
           */} 
         </div>
         <Rightbar>
-        
-          <Button  variant="contained" className={classes.primaryBtn} onClick={connect}>Connect wallet</Button>
-          <Typography sx={{fontWeight: 'bold', marginTop: '24px'}}>
-            Wallet Information
-          </Typography>
-          <Typography sx={{color: '#4E4B66', fontSize: '0.9rem'}}>Network: {network.name}</Typography>
-          <Typography noWrap="false" sx={{color: '#4E4B66', fontSize: '0.9rem'}}>Address: {account.address}</Typography>
-          <Typography sx={{color: '#4E4B66', fontSize: '0.9rem'}}>Celo: {account.CELO}</Typography>
-          <Typography sx={{color: '#4E4B66', fontSize: '0.9rem'}}>cUSD: {account.cUSD}</Typography>
-          <Typography sx={{color: '#4E4B66', fontSize: '0.9rem'}}>cEUR: {account.cEUR}</Typography>
-         
+          {address ? 
+            (<Button  variant="contained" className={classes.primaryBtn} onClick={destroy}>Disconnect</Button>)
+            : 
+            (<Button  variant="contained" className={classes.primaryBtn} onClick={connect}>Connect</Button>)
+          }
+          {address && (
+            <div>
+              <Typography sx={{fontWeight: 'bold', marginTop: '24px'}}>Wallet Information</Typography>
+              <Typography sx={{color: '#4E4B66', fontSize: '0.9rem'}}>Network: {network.name}</Typography>
+              <Typography sx={{color: '#4E4B66', fontSize: '0.9rem'}}>Address: {truncateAddress(address)}</Typography>
+              <Typography sx={{color: '#4E4B66', fontSize: '0.9rem'}}>Celo: {Web3.utils.fromWei(summary.celo.toFixed())}</Typography>
+              <Typography sx={{color: '#4E4B66', fontSize: '0.9rem'}}>cUSD: {Web3.utils.fromWei(summary.cusd.toFixed())}</Typography>
+              <Typography sx={{color: '#4E4B66', fontSize: '0.9rem'}}>cEUR: {Web3.utils.fromWei(summary.ceur.toFixed())}</Typography>
+            </div>
+          )}
          <Divider />
           <div>
             <div>
-              <Button className={classes.linkBtn} onClick={getAccountSummary}>Refresh account</Button>
+              <Button className={classes.linkBtn} onClick={fetchSummary}>Refresh account</Button>
             </div>
             <div>
               <Button className={classes.linkBtn} onClick={getLoans}>Refresh loans</Button>
