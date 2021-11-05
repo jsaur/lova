@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useContractKit } from '@celo-tools/use-contractkit';
-import { ContractKitProvider } from '@celo-tools/use-contractkit';
 import '@celo-tools/use-contractkit/lib/styles.css';
 import lovaJson from '../truffle/build/contracts/Lova.json';
 import erc20Json from '../truffle/build/contracts/ERC20.json';
@@ -8,69 +7,13 @@ import Head from 'next/head';
 import Sidebar from '../components/sidebar';
 import Rightbar from '../components/rightbar';
 import OutlinedCard from '../components/outlinedcard';
-import { makeStyles } from '@mui/styles';
-import theme from '../src/theme';
+import useStyles from '../src/usestyles';
 import BorrowerCard from '../components/borrowercard';
 
 import { Button, Typography, Modal, Box, Divider, TextField} from '@mui/material';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 
-const useStyles = makeStyles({
-  primaryBtn: {
-    backgroundColor: theme.palette.primary.main,
-    textTransform: 'none',
-    borderRadius: '15px',
-    boxShadow: 'none',
-    width: '100%',
-    '&:hover': {
-      background: "#2FA06A",
-      boxShadow: 'none',
-    }
-  },
-  arrowButton: {
-    backgroundColor: 'white',
-    borderRadius: '15px',
-    color: theme.palette.secondary.main,
-    boxShadow: 'none',
-    padding: '8px',
-    minWidth: 'auto',
-    '&:hover': {
-      background: "#2FA06A",
-      color: 'white',
-    }
-  },
-  linkBtn:  {
-    color: theme.palette.primary.main,
-    textTransform: 'none',
-    textDecoration: 'underline',
-    fontWeight: 'bold',
-  },
-  modalWrapper: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    width: 400,
-    backgroundColor: '#FFFFFF',
-    border: '2px solid #000',
-    boxShadow: 24,
-    p: 4,
-    padding: '25px',
-  },
-  bigTitle: {
-    fontWeight: 'bold',
-    letterSpacing: 0,
-  },
-  smallerTitle: {
-    fontWeight: 'bold',
-  },
-  mainCaption: {
-    color: '#4E4B66',
-    fontSize: '0.9rem',
-  }
-});
-
-function App () {
+export default function Home(): React.ReactElement {
   const { connect, network, getConnectedKit} = useContractKit();
   let [account, setAccount] = useState([]);
   let [loans, setLoans] = useState([]);
@@ -370,19 +313,3 @@ function App () {
     </div>
   )
 }
-
-
-function WrappedApp() {
-  return (
-    <ContractKitProvider
-      dapp={{
-          name: "My awesome dApp",
-          description: "My awesome description",
-          url: "https://example.com",
-        }}
-    >
-      <App />
-    </ContractKitProvider>
-  );
-}
-export default WrappedApp;
