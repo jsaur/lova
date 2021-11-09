@@ -36,7 +36,7 @@ yarn dev
 
 ## Deployment
 
-This has been deployed via Vercel to https://lova-jv2frqji6-jsaur.vercel.app/
+This has been deployed via Vercel to https://lova.vercel.app
 
 ## Alfajores Testnet
 
