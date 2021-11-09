@@ -5,6 +5,7 @@ import { useContractKit } from '@celo-tools/use-contractkit';
 import Web3 from 'web3';
 import lovaJson from '../truffle/build/contracts/Lova.json';
 import Head from 'next/head';
+import ContractButton from '../components/contractbutton';
 import Sidebar from '../components/sidebar';
 import Rightbar from '../components/rightbar';
 import OutlinedCard from '../components/outlinedcard';
@@ -54,8 +55,8 @@ export default function Home(): React.ReactElement {
   const ceurAddress = '0x10c892A6EC43a53E45D0B916B4b7D383B1b78C0F';
   const kivaApiUrl = 'https://api.kivaws.org/v2/loans/';
   const kivaImageUrl = 'https://www-kiva-org-0.freetls.fastly.net/img/w480h360/';
-  let lovaContract;
-  let cusdContract;
+  const lovaAbi: any = lovaJson.abi; // hack to fix abi types
+  const lovaContract = new kit.web3.eth.Contract(lovaAbi, lovaAddress);
 
   /**
    * Fetches account summary and token balances
@@ -103,8 +104,6 @@ export default function Home(): React.ReactElement {
 
     try {
       setLoading(true);
-      const lovaAbi: any = lovaJson.abi;
-      lovaContract = new kit.web3.eth.Contract(lovaAbi, lovaAddress);
       let loans = [];
       const loanCount = await lovaContract.methods.loanCount().call();
       // Fetch loans in reverse order
@@ -121,9 +120,11 @@ export default function Home(): React.ReactElement {
     } finally {
       setLoading(false);
     }
-
   }
 
+  /**
+   * Fetches data from Kiva's API
+   */
   async function getKivaData(kivaId: number) {
     try {
       const res = await fetch(kivaApiUrl + kivaId);
@@ -139,19 +140,12 @@ export default function Home(): React.ReactElement {
   }
 
   /**
-   * Approve contract to spend cUSD, defaulting to 10,000 for now
-   * This only needs to be called once, if cusdAllowance > 0 then this can be skipped
+   * Wrapper function for contract calls to handle the transacting flag and errors
    */
-  async function approve() {
+  async function wrapContractCall(fn: (...args) => void, ...args) {
     try {
       setTransacting(true);
-      const cUSD = await kit.contracts.getStableToken(StableToken.cUSD);
-      const approveLimit = Web3.utils.toWei('10000', 'ether');
-      let receipt = await cUSD
-        .approve(lovaAddress, approveLimit)
-        .sendAndWaitForReceipt({ from: kit.defaultAccount, gasPrice: defaultGasPrice });
-      toast.success('Approve succeeded');
-      console.log(receipt);
+      await fn(...args);
     } catch (e) {
       console.log(e);
       toast.error((e as Error).message);
@@ -160,60 +154,92 @@ export default function Home(): React.ReactElement {
     }
   }
 
-  // TODO right now we hard-code a 5 dollar loan with 5 shares, we should add a text box to make it customizable
+  /**
+   * Approve contract to spend cUSD, defaulting to 10,000 for now
+   * This only needs to be called once, if cusdAllowance > 0 then this can be skipped
+   */
+  async function approve() {
+    const cUSD = await kit.contracts.getStableToken(StableToken.cUSD);
+    const approveLimit = Web3.utils.toWei('10000', 'ether');
+    let receipt = await cUSD
+      .approve(lovaAddress, approveLimit)
+      .sendAndWaitForReceipt({ from: kit.defaultAccount, gasPrice: defaultGasPrice });
+    console.log(receipt);
+    fetchSummary();
+  }
+
+  /** 
+   * TODO right now we hard-code a 5 dollar loan with 5 shares and a random kiva id
+   * We should add a text box to make it customizable
+   */
   async function mint() {
     const borrower = kit.defaultAccount;
     const token = cusdAddress;
     const amountRequested = (5 * 10**ERC20_DECIMALS).toString();
     const sharePrice = (1 * 10**ERC20_DECIMALS).toString();;
-    const kivaId = 2268570;
+    const kivaId = 1000000 + (Math.floor(Math.random() * 1000000));
 
-    const txObject = await lovaContract.methods.mint(borrower, token, amountRequested, sharePrice, kivaId); 
-    let tx = await kit.sendTransactionObject(txObject, { from: kit.defaultAccount });
+    const txObject = await lovaContract.methods.mint(borrower, token, amountRequested, sharePrice, kivaId);
+    let tx = await kit.sendTransactionObject(txObject, { from: kit.defaultAccount, gasPrice: defaultGasPrice });
     let receipt = await tx.waitReceipt();
     console.log(receipt);
-    await fetchSummary();
-    await getLoans();
+    fetchSummary();
+    getLoans();
   }
 
+  /**
+   * Lend to loan id - hard coding number of shares
+   */
   async function lend(loanId) {
     const numShares = 5;
-    const txObject = await lovaContract.methods.lend(loanId, numShares); 
-    let tx = await kit.sendTransactionObject(txObject, { from: kit.defaultAccount });
+
+    const txObject = await lovaContract.methods.lend(loanId, numShares);
+    let tx = await kit.sendTransactionObject(txObject, { from: kit.defaultAccount, gasPrice: defaultGasPrice });
     let receipt = await tx.waitReceipt();
     console.log(receipt);
-    await fetchSummary();
-    await getLoans();
+    fetchSummary();
+    getLoans();
   }
 
+  /**
+   * Called by the borrower to withdraw the borrow amount
+   */
   async function borrow(loanId) {
     const txObject = await lovaContract.methods.borrow(loanId); 
-    let tx = await kit.sendTransactionObject(txObject, { from: kit.defaultAccount });
+    let tx = await kit.sendTransactionObject(txObject, { from: kit.defaultAccount, gasPrice: defaultGasPrice });
     let receipt = await tx.waitReceipt();
     console.log(receipt);
-    await fetchSummary();
-    await getLoans();
+    fetchSummary();
+    getLoans();
   }
 
+  /**
+   * Called by the borrower to repay to the loan contract
+   */
   async function repay(loanId) {
     const repayAmount = (2.5 * 10**ERC20_DECIMALS).toString();
+
     const txObject = await lovaContract.methods.repay(loanId, repayAmount); 
-    let tx = await kit.sendTransactionObject(txObject, { from: kit.defaultAccount });
+    let tx = await kit.sendTransactionObject(txObject, { from: kit.defaultAccount, gasPrice: defaultGasPrice });
     let receipt = await tx.waitReceipt();
     console.log(receipt);
-    await fetchSummary();
-    await getLoans();
+    fetchSummary();
+    getLoans();
   }
 
+  /**
+   * Called by the lender to burn loan shares in exchange for withdrawing tokens
+   */
   async function burn(loanId) {
     const account = kit.defaultAccount;
     const numShares = 5;
+
     const txObject = await lovaContract.methods.burn(account, loanId, numShares); 
-    let tx = await kit.sendTransactionObject(txObject, { from: kit.defaultAccount });
+    let tx = await kit.sendTransactionObject(txObject, { from: kit.defaultAccount, gasPrice: defaultGasPrice });
     let receipt = await tx.waitReceipt();
     console.log(receipt);
-    await fetchSummary();
-    await getLoans();
+    fetchSummary();
+    getLoans();
   }
 
   /**
@@ -225,20 +251,23 @@ export default function Home(): React.ReactElement {
     }
     const loanId = props.loan.loanId;
     if (props.loan.currentState == 0 && props.loan.borrower != address) {
-      return (<div><Button variant="contained" className={classes.primaryBtn} onClick={() => lend(loanId)}>Lend</Button></div>);
+      return (<ContractButton transacting={transacting} className={classes.primaryBtn} onClick={() => wrapContractCall(lend, loanId)} text="Lend" />);
     }
     if (props.loan.currentState == 1 && props.loan.borrower == address) {
-      return (<div><Button variant="contained"  className={classes.primaryBtn} onClick={() => borrow(loanId)}>Borrow</Button></div>);
+      return (<ContractButton transacting={transacting} className={classes.primaryBtn} onClick={() => wrapContractCall(borrow, loanId)} text="Borrow" />);
     }
     if (props.loan.currentState == 2 && props.loan.borrower == address) {
-      return (<div><Button variant="contained"  className={classes.primaryBtn} onClick={() => repay(loanId)}>Repay</Button></div>);
+      return (<ContractButton transacting={transacting} className={classes.primaryBtn} onClick={() => wrapContractCall(repay, loanId)} text="Repay" />);
     }
     if (props.loan.currentState == 3 && props.loan.ownerBalance > 0) {
-      return <div><Button variant="contained"  className={classes.primaryBtn} onClick={() => burn(loanId)}>Withdraw</Button></div>
+      return (<ContractButton transacting={transacting} className={classes.primaryBtn} onClick={() => wrapContractCall(burn, loanId)} text="Withdraw" />);
     }
     return (<div></div>);
   }
 
+  /**
+   * Helper function to convert state enum into string
+   */
   function currentState(currentState) {
     switch(currentState) {
       case "0":
@@ -302,9 +331,7 @@ export default function Home(): React.ReactElement {
                   </Typography>
                   <TextField id="standard-basic" label="# of shares" variant="standard" sx={{marginBottom:'25px', marginTop:'20px'}} />
                   <div className="grid grid-cols-2 gap-4">
-                    <Button disabled={transacting} variant="contained" className={classes.primaryBtn} onClick={() => approve()}>
-                      {transacting ? (<CircularProgress color="inherit" size="1rem" />) : ("Approve cUSD")}
-                    </Button>
+                    <ContractButton transacting={transacting} className={classes.primaryBtn} onClick={() => wrapContractCall(approve)} text="Approve cUSD" />
                     <Button variant="contained" className={classes.primaryBtn} onClick={() => lend(1)}>Lend</Button>
                   </div>
                 </Box>
@@ -319,25 +346,7 @@ export default function Home(): React.ReactElement {
             </div>
           </OutlinedCard>
         </div>
-         
-        {/* <div>
-          <Typography variant="h6" className={classes.smallerTitle}>
-            Latest repaid loans
-          </Typography>
-        </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <BorrowerCard title="Soufiane Dari" description="A loan helps Soufiane start his community business and empower his neighborhood." imgsource="/img/soufianeloan.png">
-              <Button  variant="contained"  className={classes.primaryBtn} onClick={() => burn(2)}>Withdraw</Button>
-          </BorrowerCard>
-          <BorrowerCard title="Flor De Coco Group" description="A loan helps a Flor de Coco group member to buy clothing to resell in her community." imgsource="/img/flordecoco.jpg">
-            <Button  variant="contained"  className={classes.primaryBtn} onClick={() => burn(2)}>Withdraw</Button>
-          </BorrowerCard>
-        </div> */}
-        
-     
-         {/*<div><Button variant="contained"  className={classes.primaryBtn} onClick={mint}>Borrower: Create and mint $5 loan</Button></div>
-           <div><Button variant="contained"  className={classes.primaryBtn} onClick={approve}>Approve spend limit</Button></div>*/}
         {address ? 
           (<div>
             <div>
@@ -397,6 +406,9 @@ export default function Home(): React.ReactElement {
             </div>
             <div>
               <Button className={classes.linkBtn} onClick={getLoans}>Refresh loans</Button>
+            </div>
+            <div>
+              <ContractButton className={classes.primaryBtn} onClick={() => wrapContractCall(mint)} text="Create Loan" transacting={transacting} />
             </div>
         </div>
         </Rightbar>
