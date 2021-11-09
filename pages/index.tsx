@@ -44,6 +44,7 @@ export default function Home(): React.ReactElement {
   const [summary, setSummary] = useState(defaultSummary);
   let [loans, setLoans] = useState([]);
   const [transacting, setTransacting] = useState(false);
+  const [loading, setLoading] = useState(false);
   
 
   // TODO Move these to configs
@@ -51,6 +52,8 @@ export default function Home(): React.ReactElement {
   const lovaAddress = '0x003078feADd721C37f08d934EE7F71576285EdA7';
   const cusdAddress = '0x874069Fa1Eb16D44d622F2e0Ca25eeA172369bC1';
   const ceurAddress = '0x10c892A6EC43a53E45D0B916B4b7D383B1b78C0F';
+  const kivaApiUrl = 'https://api.kivaws.org/v2/loans/';
+  const kivaImageUrl = 'https://www-kiva-org-0.freetls.fastly.net/img/w480h360/';
   let lovaContract;
   let cusdContract;
 
@@ -97,18 +100,42 @@ export default function Home(): React.ReactElement {
     if (!address) {
       return;
     }
-    const lovaAbi: any = lovaJson.abi;
-    lovaContract = new kit.web3.eth.Contract(lovaAbi, lovaAddress);
-    let loans = [];
-    const loanCount = await lovaContract.methods.loanCount().call();
-    // Fetch loans in reverse order
-    for (let loanId = loanCount -1 ; loanId >= 0; loanId--) {
-      const loanInfo = await lovaContract.methods.loanInfo(loanId).call();
-      const sharesLeft = await lovaContract.methods.sharesLeft(loanId).call();
-      const loan = { loanId, ...loanInfo, sharesLeft };
-      loans.push(loan);
+
+    try {
+      setLoading(true);
+      const lovaAbi: any = lovaJson.abi;
+      lovaContract = new kit.web3.eth.Contract(lovaAbi, lovaAddress);
+      let loans = [];
+      const loanCount = await lovaContract.methods.loanCount().call();
+      // Fetch loans in reverse order
+      for (let loanId = loanCount -1 ; loanId >= 0; loanId--) {
+        const loanInfo = await lovaContract.methods.loanInfo(loanId).call();
+        const sharesLeft = await lovaContract.methods.sharesLeft(loanId).call();
+        const kivaData = await getKivaData(loanInfo.kivaId);
+        const loan = { loanId, ...loanInfo, sharesLeft, ...kivaData };
+        loans.push(loan);
+      }
+      setLoans(loans);
+    } catch(e) {
+
+    } finally {
+      setLoading(false);
     }
-    setLoans(loans);
+
+  }
+
+  async function getKivaData(kivaId: number) {
+    try {
+      const res = await fetch(kivaApiUrl + kivaId);
+      const data = await res.json();
+      return {
+        title: data.properties.name,
+        description: `This loan helps ${data.properties.use}`,
+        imgsource: kivaImageUrl + data.entities[1].properties.hash + '.jpg'
+      }
+    } catch (e) {
+      console.log('Error fetching data ' + (e as Error).message);
+    }
   }
 
   /**
@@ -189,21 +216,27 @@ export default function Home(): React.ReactElement {
     await getLoans();
   }
 
+  /**
+   * Complex logic based on the state of the loan and whether the address is a borrower or lender
+   */
   function Buttons(props) {
+    if (!address) {
+      return (<div></div>);
+    }
     const loanId = props.loan.loanId;
-    if (props.loan.currentState == 0) {
-      return (<div><Button variant="contained" className={classes.primaryBtn} onClick={() => lend(loanId)}>Lender: lend</Button></div>);
+    if (props.loan.currentState == 0 && props.loan.borrower != address) {
+      return (<div><Button variant="contained" className={classes.primaryBtn} onClick={() => lend(loanId)}>Lend</Button></div>);
     }
-    /*if (props.loan.currentState == 1) {
-      return (<div><Button   variant="contained"  className={classes.primaryBtn} onClick={() => borrow(loanId)}>Borrower: borrow</Button></div>);
+    if (props.loan.currentState == 1 && props.loan.borrower == address) {
+      return (<div><Button variant="contained"  className={classes.primaryBtn} onClick={() => borrow(loanId)}>Borrow</Button></div>);
     }
-    if (props.loan.currentState == 2) {
-      return (<div><Button  variant="contained"  className={classes.primaryBtn} onClick={() => repay(loanId)}>Borrower: repay</Button></div>);
-    }*/
-    if (props.loan.currentState == 3) {
-      return <div><Button  variant="contained"  className={classes.primaryBtn} onClick={() => burn(loanId)}>Lender: burn and withdraw</Button></div>
+    if (props.loan.currentState == 2 && props.loan.borrower == address) {
+      return (<div><Button variant="contained"  className={classes.primaryBtn} onClick={() => repay(loanId)}>Repay</Button></div>);
     }
-    return "";
+    if (props.loan.currentState == 3 && props.loan.ownerBalance > 0) {
+      return <div><Button variant="contained"  className={classes.primaryBtn} onClick={() => burn(loanId)}>Withdraw</Button></div>
+    }
+    return (<div></div>);
   }
 
   function currentState(currentState) {
@@ -287,7 +320,7 @@ export default function Home(): React.ReactElement {
           </OutlinedCard>
         </div>
          
-        <div>
+        {/* <div>
           <Typography variant="h6" className={classes.smallerTitle}>
             Latest repaid loans
           </Typography>
@@ -300,37 +333,51 @@ export default function Home(): React.ReactElement {
           <BorrowerCard title="Flor De Coco Group" description="A loan helps a Flor de Coco group member to buy clothing to resell in her community." imgsource="/img/flordecoco.jpg">
             <Button  variant="contained"  className={classes.primaryBtn} onClick={() => burn(2)}>Withdraw</Button>
           </BorrowerCard>
-        </div>
+        </div> */}
         
      
          {/*<div><Button variant="contained"  className={classes.primaryBtn} onClick={mint}>Borrower: Create and mint $5 loan</Button></div>
            <div><Button variant="contained"  className={classes.primaryBtn} onClick={approve}>Approve spend limit</Button></div>*/}
-      
+        {address ? 
+          (<div>
+            <div>
+              <Typography variant="h6" className={classes.smallerTitle}>
+                Active loans
+              </Typography>
+            </div>
+            {loading ? 
+              (<CircularProgress color="inherit" />) 
+              : 
+              (<div className="grid grid-cols-2 gap-4">
+                {
+                  loans.map((loan) => 
+                    <div key={loan.loanId}>
+                      <BorrowerCard title={loan.title} description={loan.description} imgsource={loan.imgsource} state={currentState(loan.currentState)}>
+                        <Buttons loan={loan} />
+                      </BorrowerCard>
+                    </div>
+                  )
+                } 
+              </div>)
+            }
+          </div>)
+          : 
+          (
+            <Typography variant="h6" className={classes.smallerTitle}>
+              Connect wallet to view loans
+            </Typography>
+          )
+        }
         
-        <div>
-          {/*
-            loans.map((loan) => 
-              <div key={loan.loanId} className="border px-4 text-gray-600">
-                <div>LoanId: {loan.loanId}</div>
-                <div>Borrower: {loan.borrower}</div>
-                <div>Token: {loan.token}</div>
-                <div>Kiva ID: <a href={"https://api.kivaws.org/v2/loans/" + loan.kivaId}>{loan.kivaId}</a></div>
-                <div>Num Shares: {loan.numShares}</div>
-                <div>Share Price: {loan.sharePrice}</div>
-                <div>Shares Left: {loan.sharesLeft}</div>
-                <div>Amount Repaid: {loan.amountRepaid}</div>
-                <div>Current State: {currentState(loan.currentState)}</div>
-                <div>Owner Share Balance: {loan.ownerBalance}</div> 
-                <Buttons loan={loan} />
-              </div>
-            )
-          */} 
-        </div>
         <Rightbar>
           {address ? 
-            (<Button  variant="contained" className={classes.primaryBtn} onClick={destroy}>Disconnect</Button>)
+            (<Button variant="contained" className={classes.primaryBtn} onClick={() => 
+              destroy().catch((e) => toast.error((e as Error).message))
+            }>Disconnect</Button>)
             : 
-            (<Button  variant="contained" className={classes.primaryBtn} onClick={connect}>Connect</Button>)
+            (<Button variant="contained" className={classes.primaryBtn} onClick={() =>
+                connect().catch((e) => toast.error((e as Error).message))
+            }>Connect</Button>)
           }
           {address && (
             <div>
