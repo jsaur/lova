@@ -399,21 +399,22 @@ export default function Home(): React.ReactElement {
               <Typography sx={{color: '#4E4B66', fontSize: '0.9rem'}}>cUSD: {Web3.utils.fromWei(summary.cusd.toFixed())}</Typography>
               <Typography sx={{color: '#4E4B66', fontSize: '0.9rem'}}>cEUR: {Web3.utils.fromWei(summary.ceur.toFixed())}</Typography>
               <Typography sx={{color: '#4E4B66', fontSize: '0.9rem'}}>cUSD Allowance: {Web3.utils.fromWei(summary.cusdAllowance.toFixed())}</Typography>
+              <Divider />
+              <div>
+                <div className="py-2"> </div>
+                <div>
+                  <ContractButton variant="contained" className={classes.primaryBtn} onClick={() => wrapContractCall(mint)} text="Create $5 Loan" transacting={transacting} />
+                </div>
+                <div>
+                  <Button className={classes.linkBtn} onClick={fetchSummary}>Refresh account</Button>
+                </div>
+                <div>
+                  <Button className={classes.linkBtn} onClick={getLoans}>Refresh loans</Button>
+                </div>
+            </div>
             </div>
           )}
-         <Divider />
-          <div>
-            <div className="py-2"> </div>
-            <div>
-              <ContractButton variant="contained" className={classes.primaryBtn} onClick={() => wrapContractCall(mint)} text="Create $5 Loan" transacting={transacting} />
-            </div>
-            <div>
-              <Button className={classes.linkBtn} onClick={fetchSummary}>Refresh account</Button>
-            </div>
-            <div>
-              <Button className={classes.linkBtn} onClick={getLoans}>Refresh loans</Button>
-            </div>
-        </div>
+
         </Rightbar>
       </main>
     </div>
