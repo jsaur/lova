@@ -19,10 +19,16 @@ export default function BorrowerCard(props) {
           {props.title}
         </Typography>
         <Typography variant="body2" color="text.secondary">
-            {props.state}
+            {props.description}
         </Typography>
         <Typography variant="body2" color="text.secondary">
-            {props.description}
+            Status: {props.state}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+            Shares left: {props.sharesLeft}
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+            Shares owned: {props.sharesOwned}
         </Typography>
       </CardContent>
       <CardActions>

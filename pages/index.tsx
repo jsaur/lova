@@ -106,12 +106,13 @@ export default function Home(): React.ReactElement {
       setLoading(true);
       let loans = [];
       const loanCount = await lovaContract.methods.loanCount().call();
-      // Fetch loans in reverse order
-      for (let loanId = loanCount -1 ; loanId >= 0; loanId--) {
+      // Fetch loans in reverse order (skipping the first 3)
+      for (let loanId = loanCount -1 ; loanId >= 3; loanId--) {
         const loanInfo = await lovaContract.methods.loanInfo(loanId).call();
         const sharesLeft = await lovaContract.methods.sharesLeft(loanId).call();
+        const sharesOwned = await lovaContract.methods.balanceOf(address, loanId).call();
         const kivaData = await getKivaData(loanInfo.kivaId);
-        const loan = { loanId, ...loanInfo, sharesLeft, ...kivaData };
+        const loan = { loanId, ...loanInfo, sharesLeft, sharesOwned, ...kivaData };
         loans.push(loan);
       }
       setLoans(loans);
@@ -259,7 +260,7 @@ export default function Home(): React.ReactElement {
     if (props.loan.currentState == 2 && props.loan.borrower == address) {
       return (<ContractButton transacting={transacting} className={classes.primaryBtn} onClick={() => wrapContractCall(repay, loanId)} text="Repay" />);
     }
-    if (props.loan.currentState == 3 && props.loan.ownerBalance > 0) {
+    if (props.loan.currentState == 3 && props.loan.sharesOwned > 0) {
       return (<ContractButton transacting={transacting} className={classes.primaryBtn} onClick={() => wrapContractCall(burn, loanId)} text="Withdraw" />);
     }
     return (<div></div>);
@@ -361,7 +362,8 @@ export default function Home(): React.ReactElement {
                 {
                   loans.map((loan) => 
                     <div key={loan.loanId}>
-                      <BorrowerCard title={loan.title} description={loan.description} imgsource={loan.imgsource} state={currentState(loan.currentState)}>
+                      <BorrowerCard title={loan.title} description={loan.description} imgsource={loan.imgsource} 
+                        state={currentState(loan.currentState)} sharesLeft={loan.sharesLeft} sharesOwned={loan.sharesOwned}>
                         <Buttons loan={loan} />
                       </BorrowerCard>
                     </div>
@@ -401,14 +403,15 @@ export default function Home(): React.ReactElement {
           )}
          <Divider />
           <div>
+            <div className="py-2"> </div>
+            <div>
+              <ContractButton variant="contained" className={classes.primaryBtn} onClick={() => wrapContractCall(mint)} text="Create $5 Loan" transacting={transacting} />
+            </div>
             <div>
               <Button className={classes.linkBtn} onClick={fetchSummary}>Refresh account</Button>
             </div>
             <div>
               <Button className={classes.linkBtn} onClick={getLoans}>Refresh loans</Button>
-            </div>
-            <div>
-              <ContractButton className={classes.primaryBtn} onClick={() => wrapContractCall(mint)} text="Create Loan" transacting={transacting} />
             </div>
         </div>
         </Rightbar>
